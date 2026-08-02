@@ -1,0 +1,376 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MARKET DESK — 市場心理・過熱度・需給</title>
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    .row, .chip, tr.row, summary { transition: background-color .15s ease, border-color .15s ease; }
+  }
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --series-sma50: #2a78d6; --series-sma150: #1baf7a; --series-sma200: #4a3aa7;
+    --accent: #eb6834; --accent-ink: #ffffff;
+    --good: #0ca30c; --good-bg: rgba(12,163,12,0.12);
+    --warning: #b8790f; --warning-bg: rgba(250,178,25,0.22);
+    --critical: #d03b3b; --critical-bg: rgba(208,59,59,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --baseline: #383835;
+      --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+      --series-sma50: #3987e5; --series-sma150: #199e70; --series-sma200: #9085e9;
+      --accent: #d95926; --accent-ink: #ffffff;
+      --good: #0ca30c; --good-bg: rgba(12,163,12,0.18);
+      --warning: #fab219; --warning-bg: rgba(250,178,25,0.16);
+      --critical: #e66767; --critical-bg: rgba(230,103,103,0.16);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835;
+    --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+    --series-sma50: #3987e5; --series-sma150: #199e70; --series-sma200: #9085e9;
+    --accent: #d95926; --accent-ink: #ffffff;
+    --good: #0ca30c; --good-bg: rgba(12,163,12,0.18);
+    --warning: #fab219; --warning-bg: rgba(250,178,25,0.16);
+    --critical: #e66767; --critical-bg: rgba(230,103,103,0.16);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --series-sma50: #2a78d6; --series-sma150: #1baf7a; --series-sma200: #4a3aa7;
+    --accent: #eb6834; --accent-ink: #ffffff;
+    --good: #0ca30c; --good-bg: rgba(12,163,12,0.12);
+    --warning: #b8790f; --warning-bg: rgba(250,178,25,0.22);
+    --critical: #d03b3b; --critical-bg: rgba(208,59,59,0.10);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    background: var(--page); color: var(--ink);
+    font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.6;
+  }
+  .mono { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .serif { font-family: Cambria, Georgia, "Times New Roman", serif; }
+  h1,h2,h3 { text-wrap: balance; margin: 0; }
+  a { color: inherit; }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 64px; }
+  @media (max-width: 600px) {
+    .shell { padding: 0 12px 48px; }
+    .topbar-inner { padding: 12px; }
+    .brand .mark { font-size: 1.25rem; }
+  }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1180px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand .mark { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand .tagline { font-size: 0.8rem; color: var(--ink-2); letter-spacing: 0.03em; text-transform: uppercase; }
+  .backlink {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; font-weight: 700;
+    padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-strong); text-decoration: none;
+  }
+  .backlink:hover { background: color-mix(in srgb, var(--series-sma50) 8%, transparent); }
+
+  .notice {
+    margin: 22px 0; padding: 14px 18px; border-radius: 10px; border: 1px dashed var(--border-strong);
+    background: color-mix(in srgb, var(--muted) 9%, transparent);
+    font-size: 0.88rem; color: var(--ink-2);
+  }
+
+  .section { margin-top: 40px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+  .section-head h2 { font-size: 1.35rem; font-weight: 700; }
+  .section-head .sub { font-size: 0.86rem; color: var(--ink-2); }
+
+  .grid { display: grid; gap: 16px; }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  @media (max-width: 900px) { .grid-3 { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 600px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px 22px; }
+  .card h3 { font-size: 0.82rem; color: var(--ink-2); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; margin-bottom: 12px; }
+  .card .big { font-size: 1.9rem; font-weight: 700; }
+  .card .sub-line { font-size: 0.86rem; color: var(--ink-2); margin-top: 4px; }
+  .card .unavailable { color: var(--muted); font-size: 0.92rem; }
+
+  .bar-row { margin: 10px 0; }
+  .bar-row .label { display: flex; justify-content: space-between; font-size: 0.86rem; color: var(--ink-2); margin-bottom: 4px; }
+  .bar-track { height: 10px; border-radius: 999px; background: var(--grid); overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 999px; background: var(--series-sma50); }
+
+  .stack-bar { display: flex; height: 26px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border); }
+  .stack-bar .seg { display: flex; align-items: center; justify-content: center; font-size: 0.74rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; }
+  .stack-bar .bull { background: var(--good); }
+  .stack-bar .neutral { background: var(--muted); }
+  .stack-bar .bear { background: var(--critical); }
+  .stack-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 0.82rem; color: var(--ink-2); }
+  .stack-legend .item { display: flex; align-items: center; gap: 6px; }
+  .stack-legend .sw { width: 12px; height: 12px; border-radius: 3px; }
+
+  .spark-wrap { margin-top: 14px; }
+  .spark-wrap canvas { width: 100%; height: 60px; display: block; }
+
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 999px; font-size: 0.8rem; font-weight: 700; }
+  .pill-dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .pill-overheat { background: var(--critical-bg); color: var(--critical); }
+  .pill-neutral { background: color-mix(in srgb, var(--muted) 20%, transparent); color: var(--ink-2); }
+  .pill-caution { background: var(--warning-bg); color: var(--warning); }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; max-height: 340px; overflow-y: auto; }
+  table.scan { width: 100%; border-collapse: collapse; min-width: 480px; background: var(--surface); font-size: 0.9rem; }
+  table.scan th, table.scan td { padding: 9px 14px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.scan thead th { font-size: 0.72rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 700; background: var(--surface); position: sticky; top: 0; }
+  .num { font-family: "Cascadia Code", Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .neg { color: var(--critical); font-weight: 700; }
+  .pos { color: var(--good); font-weight: 700; }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--muted); }
+  footer code { font-family: "Cascadia Code", Consolas, monospace; background: color-mix(in srgb, var(--muted) 15%, transparent); padding: 2px 6px; border-radius: 4px; }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="mark serif">MARKET DESK</span>
+      <span class="tagline">市場心理・過熱度・需給</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+      <span class="mono" id="dateLabel" style="font-size:0.86rem;color:var(--ink-2);">—</span>
+      <span class="pill pill-neutral" id="overheatPill"><span class="pill-dot"></span>—</span>
+      <a class="backlink" href="https://yukik206-rgb.github.io/pivot-desk-site/">← PIVOT DESK(チャート)</a>
+      <a class="backlink" href="https://yukik206-rgb.github.io/pivot-desk-site/company.html">COMPANY DESK →</a>
+      <a class="backlink" href="https://yukik206-rgb.github.io/pivot-desk-site/guide.html">投資手法ガイド →</a>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="notice">
+    ここでの「過熱注意/中立/弱気寄り」ラベルはVIX・S&P500の幅・AAII個人投資家センチメントを組み合わせた参考情報であり、
+    売買を自動で判定するシグナルではありません。個別銘柄のスクリーニング結果(PIVOT DESK)とあわせて、最終判断はご自身で行ってください。
+    データソースの一部(AAII個人投資家センチメント・CFTCの機関投資家ポジション)は無料の一括ヒストリカルが無いため、
+    このサイトが毎日/毎週取得した値をその都度ローカルに蓄積して推移を表示しています。運用開始直後は表示できる推移が短い点に注意してください。
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>① 過熱度</h2>
+      <span class="sub">VIX・S&amp;P500の幅(値がさ株頼みになっていないか)・新高値/新安値</span>
+    </div>
+    <div class="grid grid-3" id="overheatCards"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>② 個人投資家センチメント(AAII)</h2>
+      <span class="sub" id="aaiiSub">—</span>
+    </div>
+    <div id="aaiiBlock"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>③ 機関投資家の動き(CFTC先物ポジション)</h2>
+      <span class="sub" id="cotSub">—</span>
+    </div>
+    <div id="cotBlock"></div>
+  </div>
+
+  <footer>
+    データ: Yahoo Finance(VIX)、AAII Investor Sentiment Survey(個人投資家、週次)、
+    CFTC Commitments of Traders(E-mini S&amp;P500先物、Asset Manager/Institutional区分、週次)。すべて無料・登録不要の公開情報。
+    生成日時: <span class="mono" id="footDate">—</span>。
+    詳細は<code>pivot-desk/README.md</code>参照。
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const P = {"meta": {"date": "2026-08-02", "universe": "sp500"}, "vix": {"level": 15.99, "percentile_1y": 23.3, "label": "平常"}, "breadth": {"n_total": 500, "pct_above_50ma": 62.8, "pct_above_200ma": 68.4, "new_highs": 4, "new_lows": 3}, "aaii": {"date": "7/29/2026", "bull_pct": 31.0, "neutral_pct": 26.9, "bear_pct": 42.1, "history": [{"date": "7/29/2026", "bull_pct": 31.0, "neutral_pct": 26.9, "bear_pct": 42.1}]}, "cot": {"date": "July 28, 2026", "long": 1159241, "short": 214471, "net": 944770, "net_change_wow": 15611, "history": [{"date": "July 28, 2026", "long": 1159241, "short": 214471, "net": 944770, "net_change_wow": 15611}]}, "overheatLabel": "中立"};
+
+  function fmtNum(v, nd){ return v == null ? "—" : Number(v).toFixed(nd == null ? 1 : nd); }
+  function fmtInt(v){ return v == null ? "—" : Math.round(v).toLocaleString(); }
+  function fmtSigned(v){
+    if (v == null) return "—";
+    const n = Math.round(v);
+    return (n > 0 ? "+" : "") + n.toLocaleString();
+  }
+
+  document.getElementById("dateLabel").textContent = P.meta.date;
+  document.getElementById("footDate").textContent = P.meta.date;
+
+  const overheatPill = document.getElementById("overheatPill");
+  overheatPill.innerHTML = `<span class="pill-dot"></span>${P.overheatLabel}`;
+  overheatPill.className = "pill " + (
+    P.overheatLabel === "過熱注意" ? "pill-overheat" :
+    P.overheatLabel.startsWith("弱気") ? "pill-caution" : "pill-neutral"
+  );
+
+  function drawSparkline(canvas, values, color){
+    const dpr = window.devicePixelRatio || 1;
+    const w = canvas.width, h = canvas.height;
+    canvas.style.width = w+"px"; canvas.style.height = h+"px";
+    canvas.width = w*dpr; canvas.height = h*dpr;
+    const ctx = canvas.getContext("2d");
+    ctx.scale(dpr,dpr);
+    const slice = values.filter(v => v != null);
+    if (slice.length < 2) return;
+    const min = Math.min(...slice), max = Math.max(...slice);
+    const pad = 4;
+    ctx.beginPath();
+    slice.forEach((v,i) => {
+      const x = pad + (w-2*pad) * (i/(slice.length-1));
+      const y = h-pad - (h-2*pad) * ((v-min)/(max-min || 1));
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    });
+    ctx.strokeStyle = color; ctx.lineWidth = 2.2; ctx.lineJoin = "round"; ctx.stroke();
+    const lastX = w-pad, lastY = h-pad - (h-2*pad) * ((slice[slice.length-1]-min)/(max-min||1));
+    ctx.beginPath(); ctx.arc(lastX,lastY,3,0,7); ctx.fillStyle = color; ctx.fill();
+  }
+
+  // ---- ① 過熱度 ----
+  const overheatWrap = document.getElementById("overheatCards");
+  const vix = P.vix, breadth = P.breadth;
+  let vixHtml;
+  if (vix) {
+    vixHtml = `<h3>VIX(恐怖指数)</h3>
+      <div class="big">${fmtNum(vix.level, 2)}</div>
+      <div class="sub-line">1年パーセンタイル: ${fmtNum(vix.percentile_1y,0)}%点(低いほど過去1年で低ボラ側)</div>
+      <div class="sub-line" style="margin-top:8px;font-weight:700;">${vix.label}</div>`;
+  } else {
+    vixHtml = `<h3>VIX(恐怖指数)</h3><div class="unavailable">データ取得できませんでした</div>`;
+  }
+  let breadthHtml;
+  if (breadth) {
+    breadthHtml = `<h3>幅(S&amp;P500構成銘柄, ${breadth.n_total}銘柄集計)</h3>
+      <div class="bar-row">
+        <div class="label"><span>50日線より上</span><span class="num">${fmtNum(breadth.pct_above_50ma,1)}%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${breadth.pct_above_50ma}%;"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="label"><span>200日線より上</span><span class="num">${fmtNum(breadth.pct_above_200ma,1)}%</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:${breadth.pct_above_200ma}%;background:var(--series-sma200);"></div></div>
+      </div>`;
+  } else {
+    breadthHtml = `<h3>幅(S&amp;P500構成銘柄)</h3><div class="unavailable">データ取得できませんでした</div>`;
+  }
+  let newHighLowHtml;
+  if (breadth) {
+    newHighLowHtml = `<h3>52週 新高値 / 新安値</h3>
+      <div class="big"><span class="pos">${fmtInt(breadth.new_highs)}</span> <span style="color:var(--muted);font-size:1rem;">/</span> <span class="neg">${fmtInt(breadth.new_lows)}</span></div>
+      <div class="sub-line">新高値 / 新安値(${breadth.n_total}銘柄中)。新高値が新安値を大きく上回る状態が続くと相場は健全、逆転すると弱含みのサイン。</div>`;
+  } else {
+    newHighLowHtml = `<h3>52週 新高値 / 新安値</h3><div class="unavailable">データ取得できませんでした</div>`;
+  }
+  overheatWrap.innerHTML = `<div class="card">${vixHtml}</div><div class="card">${breadthHtml}</div><div class="card">${newHighLowHtml}</div>`;
+
+  // ---- ② AAII ----
+  const aaiiBlock = document.getElementById("aaiiBlock");
+  const aaii = P.aaii;
+  if (aaii) {
+    document.getElementById("aaiiSub").textContent = `調査週: ${aaii.date}(毎週木曜更新)`;
+    const hist = aaii.history || [];
+    const spread = hist.map(r => (r.bull_pct != null && r.bear_pct != null) ? (r.bull_pct - r.bear_pct) : null);
+    aaiiBlock.innerHTML = `<div class="grid grid-2">
+      <div class="card">
+        <h3>最新週(${aaii.date})</h3>
+        <div class="stack-bar">
+          <div class="seg bull" style="width:${aaii.bull_pct}%;">${aaii.bull_pct>=8?fmtNum(aaii.bull_pct,0)+"%":""}</div>
+          <div class="seg neutral" style="width:${aaii.neutral_pct}%;">${aaii.neutral_pct>=8?fmtNum(aaii.neutral_pct,0)+"%":""}</div>
+          <div class="seg bear" style="width:${aaii.bear_pct}%;">${aaii.bear_pct>=8?fmtNum(aaii.bear_pct,0)+"%":""}</div>
+        </div>
+        <div class="stack-legend">
+          <span class="item"><span class="sw" style="background:var(--good);"></span>強気 ${fmtNum(aaii.bull_pct,1)}%</span>
+          <span class="item"><span class="sw" style="background:var(--muted);"></span>中立 ${fmtNum(aaii.neutral_pct,1)}%</span>
+          <span class="item"><span class="sw" style="background:var(--critical);"></span>弱気 ${fmtNum(aaii.bear_pct,1)}%</span>
+        </div>
+        <div class="sub-line" style="margin-top:10px;">強気-弱気スプレッド: <span class="num ${(aaii.bull_pct-aaii.bear_pct)>=0?'pos':'neg'}">${fmtSigned(aaii.bull_pct-aaii.bear_pct)}pt</span>。
+        歴史的には±20pt超で偏りが大きいとされる(逆張りの目安、断定はできない)。</div>
+      </div>
+      <div class="card">
+        <h3>強気-弱気スプレッドの推移(蓄積分)</h3>
+        <div class="spark-wrap"><canvas id="aaiiSpark" width="480" height="60"></canvas></div>
+        <div class="sub-line">${hist.length}週分(このサイトの運用開始以降に蓄積したデータのみ)</div>
+      </div>
+    </div>
+    <div class="table-scroll" style="margin-top:16px;">
+      <table class="scan">
+        <thead><tr><th>調査週</th><th>強気%</th><th>中立%</th><th>弱気%</th><th>スプレッド</th></tr></thead>
+        <tbody>${hist.slice().reverse().map(r => `<tr>
+          <td class="mono">${r.date}</td>
+          <td class="num">${fmtNum(r.bull_pct,1)}</td>
+          <td class="num">${fmtNum(r.neutral_pct,1)}</td>
+          <td class="num">${fmtNum(r.bear_pct,1)}</td>
+          <td class="num ${(r.bull_pct-r.bear_pct)>=0?'pos':'neg'}">${fmtSigned(r.bull_pct-r.bear_pct)}</td>
+        </tr>`).join("")}</tbody>
+      </table>
+    </div>`;
+    requestAnimationFrame(() => drawSparkline(document.getElementById("aaiiSpark"), spread, getComputedStyle(document.documentElement).getPropertyValue('--series-sma50').trim() || "#2a78d6"));
+  } else {
+    document.getElementById("aaiiSub").textContent = "—";
+    aaiiBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(aaii.comのページ構成が変わった可能性があります)</div></div>`;
+  }
+
+  // ---- ③ CFTC COT ----
+  const cotBlock = document.getElementById("cotBlock");
+  const cot = P.cot;
+  if (cot) {
+    document.getElementById("cotSub").textContent = `集計日: ${cot.date}(毎週金曜更新、CFTC公表ベース)`;
+    const hist = cot.history || [];
+    const netSeries = hist.map(r => r.net);
+    cotBlock.innerHTML = `<div class="grid grid-2">
+      <div class="card">
+        <h3>E-mini S&amp;P500 機関投資家ネットポジション(Long-Short)</h3>
+        <div class="big ${cot.net>=0?'pos':'neg'}">${fmtSigned(cot.net)}枚</div>
+        <div class="sub-line">Long ${fmtInt(cot.long)} / Short ${fmtInt(cot.short)}</div>
+        <div class="sub-line">前週比: <span class="num ${(cot.net_change_wow||0)>=0?'pos':'neg'}">${fmtSigned(cot.net_change_wow)}枚</span>
+        (プラス=機関投資家が買い越しを拡大)</div>
+      </div>
+      <div class="card">
+        <h3>ネットポジションの推移(蓄積分)</h3>
+        <div class="spark-wrap"><canvas id="cotSpark" width="480" height="60"></canvas></div>
+        <div class="sub-line">${hist.length}週分(このサイトの運用開始以降に蓄積したデータのみ)</div>
+      </div>
+    </div>
+    <div class="table-scroll" style="margin-top:16px;">
+      <table class="scan">
+        <thead><tr><th>集計日</th><th>Long</th><th>Short</th><th>Net</th><th>前週比</th></tr></thead>
+        <tbody>${hist.slice().reverse().map(r => `<tr>
+          <td class="mono">${r.date}</td>
+          <td class="num">${fmtInt(r.long)}</td>
+          <td class="num">${fmtInt(r.short)}</td>
+          <td class="num ${r.net>=0?'pos':'neg'}">${fmtSigned(r.net)}</td>
+          <td class="num ${(r.net_change_wow||0)>=0?'pos':'neg'}">${fmtSigned(r.net_change_wow)}</td>
+        </tr>`).join("")}</tbody>
+      </table>
+    </div>`;
+    requestAnimationFrame(() => drawSparkline(document.getElementById("cotSpark"), netSeries, getComputedStyle(document.documentElement).getPropertyValue('--series-sma150').trim() || "#1baf7a"));
+  } else {
+    document.getElementById("cotSub").textContent = "—";
+    cotBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(CFTCのレポート形式が変わった可能性があります)</div></div>`;
+  }
+})();
+</script>
