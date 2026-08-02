@@ -1,0 +1,888 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>METHOD GUIDE — ミネルヴィニ投資手法・システム設計ガイド</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --accent: #eb6834; --accent-ink: #ffffff;
+    --series-sma50: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+      --accent: #d95926; --accent-ink: #ffffff;
+      --series-sma50: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+    --accent: #d95926; --accent-ink: #ffffff; --series-sma50: #3987e5;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --accent: #eb6834; --accent-ink: #ffffff; --series-sma50: #2a78d6;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    background: var(--page); color: var(--ink);
+    font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.7;
+  }
+  .mono { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; }
+  .serif { font-family: Cambria, Georgia, "Times New Roman", serif; }
+  a { color: var(--series-sma50); }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1180px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand .mark { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand .tagline { font-size: 0.8rem; color: var(--ink-2); letter-spacing: 0.03em; text-transform: uppercase; }
+  .toplinks { display: flex; gap: 10px; flex-wrap: wrap; }
+  .toplinks a {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; font-weight: 700;
+    padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-strong); text-decoration: none; color: var(--ink);
+  }
+  .toplinks a:hover { background: color-mix(in srgb, var(--series-sma50) 8%, transparent); }
+
+  .layout { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; display: grid; grid-template-columns: 240px 1fr; gap: 40px; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) {
+    .layout { padding: 20px 12px 60px; gap: 20px; }
+    .topbar-inner { padding: 12px; }
+    .brand .mark { font-size: 1.25rem; }
+    .sidenav { position: static; flex-direction: row; flex-wrap: wrap; }
+  }
+
+  .sidenav { position: sticky; top: 76px; align-self: start; display: flex; flex-direction: column; gap: 4px; }
+  .nav-item {
+    display: block; padding: 10px 14px; border-radius: 8px; font-size: 0.92rem; font-weight: 600;
+    color: var(--ink-2); text-decoration: none; border: 1px solid transparent;
+  }
+  .nav-item:hover { background: var(--surface); border-color: var(--border); color: var(--ink); }
+
+  .content { min-width: 0; }
+  .notice {
+    margin-bottom: 28px; padding: 14px 18px; border-radius: 10px; border: 1px dashed var(--border-strong);
+    background: color-mix(in srgb, var(--muted) 9%, transparent); font-size: 0.88rem; color: var(--ink-2);
+  }
+
+  section.doc {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 34px 40px; margin-bottom: 36px; scroll-margin-top: 76px;
+  }
+  @media (max-width: 600px) { section.doc { padding: 24px 20px; } }
+
+  .doc h1 { font-family: Cambria, Georgia, serif; font-size: 1.7rem; font-weight: 700; margin: 0 0 20px; text-wrap: balance; }
+  .doc h2 { font-family: Cambria, Georgia, serif; font-size: 1.3rem; font-weight: 700; margin: 34px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); text-wrap: balance; }
+  .doc h2:first-of-type { border-top: none; padding-top: 0; }
+  .doc h3 { font-size: 1.05rem; font-weight: 700; margin: 24px 0 10px; }
+  .doc p { color: var(--ink-2); margin: 0 0 14px; max-width: 76ch; }
+  .doc ul, .doc ol { color: var(--ink-2); margin: 0 0 14px; padding-left: 1.4em; max-width: 76ch; }
+  .doc li { margin-bottom: 6px; }
+  .doc strong { color: var(--ink); }
+  .doc blockquote {
+    margin: 16px 0; padding: 10px 18px; border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--ink-2); font-size: 0.94rem;
+  }
+  .doc hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  .doc code {
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 0.88em;
+    background: color-mix(in srgb, var(--muted) 14%, transparent); padding: 2px 6px; border-radius: 4px;
+  }
+  .doc pre {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; margin: 0 0 16px;
+  }
+  .doc pre code { background: none; padding: 0; }
+  .doc .table-wrap { overflow-x: auto; margin: 0 0 20px; }
+  .doc table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  .doc th, .doc td { padding: 9px 14px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  .doc thead th { font-size: 0.76rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  footer { max-width: 1180px; margin: 0 auto; padding: 20px 20px 60px; font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--border); }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="mark serif">METHOD GUIDE</span>
+      <span class="tagline">ミネルヴィニ投資手法・システム設計</span>
+    </div>
+    <div class="toplinks">
+      <a href="https://yukik206-rgb.github.io/pivot-desk-site/">← PIVOT DESK(チャート)</a>
+      <a href="https://yukik206-rgb.github.io/pivot-desk-site/company.html">COMPANY DESK(企業情報) →</a>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidenav">
+<a class="nav-item" href="#method">① ミネルヴィニ投資手法</a>
+<a class="nav-item" href="#market-health">② マーケット環境判断</a>
+<a class="nav-item" href="#system-design">③ 自動化システム設計</a>
+<a class="nav-item" href="#deep-research">④ ディープリサーチ</a>
+  </nav>
+  <div class="content">
+    <div class="notice">
+      このページは <code class="mono">投資\チャート分析</code> ・ <code class="mono">投資\マーケット分析</code> フォルダのMarkdownドキュメントを自動変換したものです。原文を直接編集すれば、次回生成時にここへ反映されます。
+    </div>
+<section class="doc" id="method"><h1 id="_1">マーク・ミネルヴィニ投資手法 調査レポート</h1>
+<p>最終更新: 2026-07-29 / 対象市場: 米国株</p>
+<hr />
+<h2 id="0-sepaspecific-entry-point-analysis">0. 全体像 — SEPA(Specific Entry Point Analysis)とは</h2>
+<p>ミネルヴィニの手法は「SEPA」と呼ばれる統合フレームワークで、大きく3層に分解できる。</p>
+<table>
+<thead>
+<tr>
+<th>層</th>
+<th>役割</th>
+<th>主な道具</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>① マクロ地合い判断</td>
+<td>今は買っていい相場か</td>
+<td>一般指数のステージ、分配日、フォロースルーデー</td>
+</tr>
+<tr>
+<td>② 銘柄選定(トレンド)</td>
+<td>どの銘柄が「勝ち組」段階にいるか</td>
+<td>トレンドテンプレート、ステージ分析、RSレーティング、ファンダメンタルズ(利益・売上加速)</td>
+</tr>
+<tr>
+<td>③ タイミング(チャートパターン)</td>
+<td>いつ・いくらで買うか</td>
+<td>VCP(ボラティリティ収縮パターン)、ピボットポイント、出来高分析</td>
+</tr>
+</tbody>
+</table>
+<p>本レポートはユーザーの要望に沿い、<strong>②の技術的側面(トレンドテンプレート／ステージ分析)と③(VCP・エントリー・出来高)</strong>、および損切り・ポジションサイジングのリスク管理ルールに重点を置く。①のマクロ地合い判断は別紙「マーケット分析/01_マーケット環境判断フレームワーク.md」にまとめた。ファンダメンタルズ(EPS/売上成長率、機関投資家保有動向など)はSEPAの重要な柱だが、今回はスコープ外とし、将来的にスクリーニングへの追加フィルタとして組み込む余地を残す。</p>
+<hr />
+<h2 id="1-stan-weinstein">1. ステージ分析(Stan Weinstein由来、ミネルヴィニが採用)</h2>
+<p>株価のライフサイクルを4段階に分類し、<strong>ステージ2でのみ買う</strong>のが大原則。</p>
+<table>
+<thead>
+<tr>
+<th>ステージ</th>
+<th>名称</th>
+<th>特徴</th>
+<th>移動平均線の挙動</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Stage 1</td>
+<td>底練り(Basing/Accumulation)</td>
+<td>下降トレンド後の横ばい、出来高低調、方向感なし</td>
+<td>200日線が横ばい化</td>
+</tr>
+<tr>
+<td>Stage 2</td>
+<td>上昇(Advancing)</td>
+<td>出来高を伴い base をブレイク、高値・安値切り上げ、機関投資家の買い集め</td>
+<td>50日線が上昇し150日・200日線を上抜け、200日線も上昇開始</td>
+</tr>
+<tr>
+<td>Stage 3</td>
+<td>天井圏(Topping)</td>
+<td>上昇が失速、押しが深くなる、戻り高値を更新できない</td>
+<td>200日線が横ばい化・鈍化</td>
+</tr>
+<tr>
+<td>Stage 4</td>
+<td>下降(Declining)</td>
+<td>高値・安値切り下げ、機関投資家の売り抜け</td>
+<td>移動平均線が下向きに転換</td>
+</tr>
+</tbody>
+</table>
+<p><strong>実務上の要点</strong>
+- 新規買いはStage 2の銘柄に限定する。Stage 1(まだブレイクしていない)は「監視リスト入り」、Stage 3・4は対象外。
+- ステージの判定は移動平均線の傾き・位置関係と、高値/安値の切り上げ/切り下げパターンの両方で行う(どちらか一方だけでは誤判定しやすい)。</p>
+<hr />
+<h2 id="2-trend-template-stage28">2. トレンドテンプレート(Trend Template) — Stage2判定の8条件</h2>
+<p>ミネルヴィニの著書『Think &amp; Trade Like a Champion』で提示された、<strong>Stage 2にいることを機械的に確認するための8条件</strong>。すべて満たして初めて「候補」となる(スクリーニングの一次フィルタとして最も実装しやすい部分)。</p>
+<ol>
+<li>現在値が <strong>150日移動平均線</strong> と <strong>200日移動平均線</strong> の両方の上にある</li>
+<li><strong>150日移動平均線 &gt; 200日移動平均線</strong></li>
+<li><strong>200日移動平均線が上昇トレンド</strong>(最低1ヶ月、理想は4〜5ヶ月以上)</li>
+<li><strong>50日移動平均線が150日線・200日線の両方より上</strong></li>
+<li>現在値が <strong>50日移動平均線の上</strong>にある</li>
+<li>現在値が <strong>52週安値から最低25%以上</strong>上昇している(書籍により30%基準の記載もあり、保守的に見るなら30%)</li>
+<li>現在値が <strong>52週高値の25%以内</strong>にある(新高値に近いほど望ましい)</li>
+<li><strong>RSレーティングが70以上</strong>(IBDのRelative Strength Rating。理想はブレイクアウト時に80〜90台)</li>
+</ol>
+<blockquote>
+<p>実装上の注意: 条件8の「RSレーティング」はInvestor's Business Dailyの独自算出値であり計算式は非公開。近似式として次がよく引用される(検証要):
+<code>RSスコア = 0.4×直近3ヶ月騰落率 + 0.2×6ヶ月騰落率 + 0.2×9ヶ月騰落率 + 0.2×12ヶ月騰落率</code>
+これを投資ユニバース全体でパーセンタイル化(1〜99)すればIBD RSレーティングの近似値になる。自動化システム設計書ではこの近似式を採用する前提を明記する。</p>
+</blockquote>
+<hr />
+<h2 id="3-vcpvolatility-contraction-pattern">3. VCP(Volatility Contraction Pattern) — ミネルヴィニの核心パターン</h2>
+<p>VCPは「機関投資家がポジションを溜め込む過程で、株価の値幅と出来高が段階的に収縮していく」現象を捉えたパターン。トレンドテンプレートが「銘柄の格」を測るフィルタなら、VCPは「今が買い場か」を判定するタイミングツールにあたる。</p>
+<h3 id="31">3.1 成立条件(定性)</h3>
+<ul>
+<li><strong>事前の強い上昇トレンド</strong>が存在すること(VCPは上昇トレンドの「休憩」であり、下降トレンド中のもみ合いとは別物)</li>
+<li>ベース形成中に<strong>複数回の押し(contraction)</strong>が発生し、<strong>押し幅が段階的に縮小</strong>していく(例: 1回目▲18% → 2回目▲12% → 3回目▲6%、のようなイメージ)</li>
+<li>各押しの最中、<strong>出来高が先細り</strong>していく(売り圧力の枯渇=Supply Dry-up)</li>
+<li>押しの回数は一般に<strong>2〜6回程度</strong>(典型は2〜4回)。ベースが長い/深いほど収縮回数は多くなりやすい</li>
+<li>直近の収縮ほど値幅が浅く、出来高も少なくなる=「タイトになる」ほど信頼度が高い</li>
+<li>ベースの深さの目安: 1本目の base は20〜35%程度の調整も許容されるが、2本目・3本目の base(いわゆる「baseの上に積み重なるbase」)は 10〜15%程度とより浅くタイトになるべき</li>
+</ul>
+<h3 id="32">3.2 ピボットポイント(買い点)</h3>
+<ul>
+<li>ベースの中で形成される直近高値(抵抗線)を <strong>ピボットポイント</strong> と呼ぶ</li>
+<li>ピボットポイントを<strong>出来高急増(平均出来高比+40〜50%以上が目安)</strong>を伴ってブレイクした時が標準的な買いシグナル</li>
+<li>「Point of Least Resistance(最も抵抗が少ない=上に抜けやすい状態)」= 収縮が進み値幅が極小化したタイミングでのブレイクが理想</li>
+<li>応用形として、ピボット到達前の押し安値からの早期エントリー(通称「チートエントリー/Cheat Entry」)もあるが、リスクは高い</li>
+</ul>
+<h3 id="33">3.3 出来高の型</h3>
+<table>
+<thead>
+<tr>
+<th>フェーズ</th>
+<th>出来高の状態</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>押し(contraction)の最中</td>
+<td>平均以下、かつ収縮が進むほど減少</td>
+</tr>
+<tr>
+<td>ベース内の戻り高値トライ</td>
+<td>平均並みかやや増加</td>
+</tr>
+<tr>
+<td>ブレイクアウト当日</td>
+<td>平均比+40〜50%以上の急増が理想</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4">4. リスク管理ルール</h2>
+<h3 id="41">4.1 損切り(ストップロス)</h3>
+<ul>
+<li><strong>エントリー価格から7〜8%以内</strong>を最大許容損失ラインとし、これを機械的に守る(感情を排除するための絶対ルール)</li>
+<li>損切りは「〜%下がったら」という価格ベースが基本(テクニカルな節目=直近安値割れ等と併用することも多い)</li>
+</ul>
+<h3 id="42-1">4.2 1トレードあたりのリスク</h3>
+<ul>
+<li>総資金の<strong>1〜1.25%</strong>を1トレードの最大許容損失とするのが目安(保守的には2%まで)</li>
+<li>ポジションサイズは以下の式で「リスク許容額から逆算」する:</li>
+</ul>
+<pre><code>ポジション金額 = (口座資金 × リスク許容%) ÷ (エントリー価格 − ストップ価格の下落率)
+</code></pre>
+<ul>
+<li>例: ストップが▲7%の位置にあり、1トレードのリスクを資金の1.25%に抑えたい場合 → ポジションサイズ ≒ 口座資金の18%程度</li>
+</ul>
+<h3 id="43">4.3 プログレッシブ・エクスポージャー(段階的建玉)</h3>
+<ul>
+<li>最初から満額は建てない。まず「スターターポジション」を建て、株価の反応を見てから追加(ピラミッディング)する</li>
+<li>追加のタイミングもピボットブレイクなど、明確なテクニカル根拠がある時に限定する</li>
+</ul>
+<h3 id="44">4.4 利益確定・手仕舞いシグナル</h3>
+<ul>
+<li>出来高を伴う急落(高値圏での大陰線+出来高急増)= 機関投資家の売り抜け(分配)のサイン</li>
+<li>大きく上昇した後、初めて短期移動平均線(10日線・21日EMAなど)を明確に割り込んだ時</li>
+<li>急騰(パラボリック)後の失速</li>
+<li>実務では「半分利食い+残り半分はストップを建値に引き上げてノーリスク化(フリーロール)」という手法も併用される</li>
+</ul>
+<hr />
+<h2 id="5">5. スクリーニング・ロジックへの落とし込み(まとめ表)</h2>
+<p>自動化を見据え、定量化可能なルールを一覧化する。</p>
+<table>
+<thead>
+<tr>
+<th>#</th>
+<th>ルール</th>
+<th>定量条件</th>
+<th>実装難易度</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>価格 &gt; 150日線 かつ 200日線</td>
+<td>Close &gt; SMA150, Close &gt; SMA200</td>
+<td>易</td>
+</tr>
+<tr>
+<td>2</td>
+<td>SMA150 &gt; SMA200</td>
+<td>易</td>
+<td></td>
+</tr>
+<tr>
+<td>3</td>
+<td>SMA200が上昇トレンド</td>
+<td>SMA200が1ヶ月(≒21営業日)前より高い(理想は4〜5ヶ月)</td>
+<td>易</td>
+</tr>
+<tr>
+<td>4</td>
+<td>SMA50 &gt; SMA150 &gt; SMA200寄りの位置</td>
+<td>SMA50がSMA150・SMA200の両方より上</td>
+<td>易</td>
+</tr>
+<tr>
+<td>5</td>
+<td>価格 &gt; SMA50</td>
+<td>易</td>
+<td></td>
+</tr>
+<tr>
+<td>6</td>
+<td>52週安値から+25%以上</td>
+<td>(Close - Low52w) / Low52w &gt;= 0.25</td>
+<td>易</td>
+</tr>
+<tr>
+<td>7</td>
+<td>52週高値の25%以内</td>
+<td>(High52w - Close) / High52w &lt;= 0.25</td>
+<td>易</td>
+</tr>
+<tr>
+<td>8</td>
+<td>RSレーティング &gt;= 70</td>
+<td>近似式でパーセンタイル化(要検証)</td>
+<td>中</td>
+</tr>
+<tr>
+<td>9</td>
+<td>VCPパターン検出</td>
+<td>押し幅の逓減・出来高逓減の系列検出</td>
+<td>難(パターン認識)</td>
+</tr>
+<tr>
+<td>10</td>
+<td>ピボットブレイク+出来高急増</td>
+<td>直近高値更新 かつ 出来高 &gt; 平均×1.4〜1.5</td>
+<td>中</td>
+</tr>
+<tr>
+<td>11</td>
+<td>ストップ7〜8%・リスク1〜1.25%</td>
+<td>ポジションサイズ計算式</td>
+<td>易(執行ロジック)</td>
+</tr>
+</tbody>
+</table>
+<p>ルール1〜8は「銘柄ユニバースを絞り込むハードフィルタ」として実装が容易。9〜10が本手法の核心でありながら実装難易度が高く、次の設計書(02)で詳細な検出アルゴリズムを提案する。</p>
+<hr />
+<h2 id="6">6. 参考情報源</h2>
+<ul>
+<li><a href="https://deepvue.com/screener/how-mark-minervini-screens-for-stocks/">Deepvue: How Mark Minervini Screens For Winning Stocks</a></li>
+<li><a href="https://deepvue.com/screener/minervini-trend-template/">Deepvue: The Mark Minervini Trend Template</a></li>
+<li><a href="https://www.chartmill.com/trading-ideas/645-Mark-Minervinis-Trend-Template-TTP">ChartMill: Mark Minervini's Trend Template (TTP)</a></li>
+<li><a href="https://deepvue.com/screener/volatility-contraction-pattern/">Deepvue: Mastering the Volatility Contraction Pattern</a></li>
+<li><a href="https://traderlion.com/technical-analysis/volatility-contraction-pattern/">TraderLion: Mastering the Volatility Contraction Pattern</a></li>
+<li><a href="https://www.finermarketpoints.com/post/what-is-mark-minervini-s-trading-strategy-the-complete-sepa-vcp-guide">FinerMarketPoints: Mark Minervini Trading Strategy (SEPA &amp; VCP Guide)</a></li>
+<li><a href="https://quantstrategy.io/blog/sepa-strategy-explained-mastering-trend-following-with-mark/">QuantStrategy.io: SEPA Strategy Explained</a></li>
+</ul>
+<p>※ 書籍『Trade Like a Stock Market Wizard』『Think &amp; Trade Like a Champion』『Trade Like a Champion』が一次情報。本レポートはこれら書籍の解説記事を横断的に照合してまとめたもの。数値基準(特にRSレーティング近似式)は自動化実装前に書籍原文での再確認を推奨。</p></section>
+<section class="doc" id="market-health"><h1 id="_1">マーケット環境判断フレームワーク(ミネルヴィニ流)</h1>
+<p>最終更新: 2026-07-29 / 対象市場: 米国株</p>
+<p>個別銘柄のチャート分析(トレンドテンプレート・VCP)は「良い相場」でこそ機能する。ミネルヴィニも「銘柄選びより先に、今が買っていい地合いかどうかを判断する」ことを重視しており、これは自動化システムの<strong>マクロゲート</strong>(全体のON/OFFスイッチ)として組み込むべき層である。関連: <a href="../チャート分析/01_ミネルヴィニ投資手法_調査レポート.md">チャート分析/01_ミネルヴィニ投資手法_調査レポート.md</a>、<a href="../チャート分析/02_自動化システム設計書.md">チャート分析/02_自動化システム設計書.md</a></p>
+<hr />
+<h2 id="1-distribution-day">1. 分配日(Distribution Day)</h2>
+<p><strong>定義</strong>: 主要指数(S&amp;P500・Nasdaq総合など)が、前日出来高を上回る出来高を伴って下落した日。「機関投資家が売っている」ことを示すシグナル。</p>
+<p><strong>カウントルール</strong>
+- 直近25営業日(約5週間)以内に分配日が<strong>4〜6日</strong>溜まると、相場は「警戒段階」入りとみなす
+- 出来高が前日を下回っている下落日は分配日としてカウントしない(ここが実装上の落とし穴になりやすい)
+- <strong>フォロースルーデー直後の数日以内に分配日が出た場合は特に危険</strong>(新しい上昇トレンドの信頼性が低いことを意味する)
+- 分配日は時間経過(通常25営業日)とともに古いものから自動的にカウントから外れる(「消滅」する)</p>
+<h2 id="2-follow-through-day">2. フォロースルーデー(Follow-Through Day)</h2>
+<p><strong>定義</strong>: 相場が調整(下落)した後、反発局面の中で、通常「4日目以降」に<strong>前日を上回る出来高で+1.5%程度以上の上昇</strong>を記録した日。新しい上昇トレンドの始まりを示唆する古典的シグナル(オニール由来だが、ミネルヴィニも地合い判断の柱として使用)。</p>
+<p><strong>実務上の使い方</strong>
+- フォロースルーデーが出るまでは新規のフルポジション構築を控える
+- フォロースルーデー後も、直後の分配日発生には要警戒(「フォロースルーデー→即分配」は失敗しやすいパターン)</p>
+<h2 id="3">3. 指数へのステージ分析・トレンドテンプレートの適用</h2>
+<p>個別銘柄と同じロジックを主要指数(S&amp;P500、Nasdaq総合、必要に応じてラッセル2000)にも適用する:
+- 指数が50日線・150日線・200日線の上にあり、かつ200日線が上向き → マクロ環境はStage 2寄り(強気)
+- 指数の200日線が横ばい・下向き、50日線が200日線を割り込む(いわゆるデッドクロス方向) → Stage 3〜4寄り(弱気・警戒)</p>
+<h2 id="4">4. 地合い別のポジション運用ルール(目安)</h2>
+<table>
+<thead>
+<tr>
+<th>地合い判定</th>
+<th>新規建て</th>
+<th>ポジションサイズ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>強気(分配日少・指数がStage2)</td>
+<td>通常通り新規エントリー可</td>
+<td>フル(設計書のリスク計算式どおり)</td>
+</tr>
+<tr>
+<td>警戒(分配日4〜6日蓄積 or フォロースルー直後の分配日)</td>
+<td>新規は厳選・スターターポジションのみ</td>
+<td>縮小(例: 通常の50%)</td>
+</tr>
+<tr>
+<td>弱気(指数がStage3〜4、分配日多数)</td>
+<td>新規エントリー停止</td>
+<td>既存ポジションの整理・現金比率を上げる</td>
+</tr>
+</tbody>
+</table>
+<h2 id="5">5. 自動化への統合方針</h2>
+<p>このフレームワークは設計書(02)の「⑧マクロゲート連携」で、個別銘柄スクリーニング結果に対する<strong>重み付け・フィルタのオン/オフ</strong>として実装する。具体的には:
+1. 日次で主要指数の分配日カウント・フォロースルーデー判定・ステージ判定を計算
+2. 上記表の3段階(強気/警戒/弱気)いずれかにマーケット状態をラベリング
+3. 個別銘柄の候補リストに対し、警戒・弱気時はランキングスコアを減点する、または「新規推奨」から除外し「監視のみ」に格下げする</p>
+<h2 id="6">6. 参考情報源</h2>
+<ul>
+<li><a href="https://pdfcoffee.com/mark-minervini-additional-notes-pdf-free.html">PDFCoffee: Mark Minervini Additional Notes</a></li>
+<li><a href="https://quantstrategy.io/blog/sepa-strategy-explained-mastering-trend-following-with-mark/">QuantStrategy.io: SEPA Strategy Explained</a></li>
+<li><a href="https://www.finermarketpoints.com/post/what-is-mark-minervini-s-trading-strategy-the-complete-sepa-vcp-guide">FinerMarketPoints: Mark Minervini Trading Strategy</a></li>
+</ul>
+<p>※ 分配日・フォロースルーデーの厳密な計数ルールはIBD/オニール由来の概念をミネルヴィニも準用しているため、細部の数値基準(4〜6日、+1.5%等)は書籍・情報源により多少の幅がある。自動化実装時はまず保守的な基準(4日で警戒)から始め、バックテストで調整することを推奨。</p></section>
+<section class="doc" id="system-design"><h1 id="_1">ミネルヴィニ流チャート分析 自動化システム設計書</h1>
+<p>最終更新: 2026-07-29 / 対象市場: 米国株 / 実装フェーズ: 未着手(設計のみ)</p>
+<p>前提資料: <a href="01_ミネルヴィニ投資手法_調査レポート.md">01_ミネルヴィニ投資手法_調査レポート.md</a>、<a href="../マーケット分析/01_マーケット環境判断フレームワーク.md">マーケット分析/01_マーケット環境判断フレームワーク.md</a></p>
+<h2 id="0">0. システムのゴール</h2>
+<p>米国株全銘柄(~8,000銘柄規模)を対象に、以下2つを日次で自動実行する。</p>
+<ul>
+<li><strong>(A) スクリーニング</strong>: トレンドテンプレート8条件 + VCPパターンを満たす「今買い場が近い/来ている」銘柄を抽出・ランキング</li>
+<li><strong>(B) 類似チャート発掘</strong>: ユーザーが指定した参照銘柄(過去の成功例や気になる銘柄)のチャート形状に似ている銘柄を、全ユニバースから検索</li>
+</ul>
+<p>(A)は「ルールに合格する銘柄を探す」網羅的スクリーニング、(B)は「この形に似ているものを探す」類似検索であり、アルゴリズムの性質が異なるため設計上明確に分離する。</p>
+<hr />
+<h2 id="1">1. 全体アーキテクチャ</h2>
+<pre><code class="language-mermaid">flowchart TD
+    A[データ取得層&lt;br/&gt;米国株OHLCV+ファンダ] --&gt; B[特徴量エンジニアリング層&lt;br/&gt;MA/52週高安/RS近似/ATR/出来高]
+    B --&gt; C[ルールエンジン&lt;br/&gt;トレンドテンプレート8条件]
+    B --&gt; D[ステージ分類器&lt;br/&gt;Stage1-4]
+    C --&gt; E[VCP検出アルゴリズム&lt;br/&gt;収縮系列・出来高ドライアップ]
+    D --&gt; E
+    E --&gt; F[類似チャート検索エンジン&lt;br/&gt;特徴ベクトル + DTW形状]
+    G[マーケット環境判断&lt;br/&gt;分配日/フォロースルー] --&gt; H[ランキング・アラート層]
+    E --&gt; H
+    F --&gt; H
+    H --&gt; I[出力層&lt;br/&gt;日次レポート/ウォッチリストCSV]
+    J[バックテスト・検証層] -.フィードバック.-&gt; C
+    J -.フィードバック.-&gt; E
+</code></pre>
+<hr />
+<h2 id="2">2. データ取得層</h2>
+<h3 id="21">2.1 必要データ</h3>
+<ul>
+<li>米国上場銘柄(NYSE/NASDAQ/AMEX)の<strong>日次OHLCV</strong>(最低2年、理想は5年超の履歴。52週高安・200日線・ステージ判定に必要)</li>
+<li>コーポレートアクション調整済み(株式分割・配当調整)</li>
+<li>上場廃止・買収された銘柄も含む履歴(バックテスト時のサバイバーシップバイアス回避のため)</li>
+<li>(将来拡張)ファンダメンタルズ: EPS成長率、売上成長率 — 今回はスコープ外だが、データ取得層はこれを後付けできる形にしておく</li>
+</ul>
+<h3 id="22">2.2 ユニバース定義(初期フィルタ)</h3>
+<ul>
+<li>取引所: NYSE, NASDAQ, NYSE American。OTC/ピンクシートは除外</li>
+<li>株価: $5〜10以上(低位株のノイズ・出来高偽装リスクを避ける)</li>
+<li>平均出来高ドル建て(過去50日): $1,000万以上を目安(流動性フィルタ。ミネルヴィニも薄商い銘柄を嫌う)</li>
+<li>ETF・優先株・ワラント・ADRの扱いは別カテゴリとして除外 or 別ユニバース管理</li>
+</ul>
+<h3 id="23">2.3 データベンダー比較</h3>
+<table>
+<thead>
+<tr>
+<th>ベンダー</th>
+<th>カバレッジ</th>
+<th>強み</th>
+<th>弱み</th>
+<th>想定コスト感</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Tiingo</strong></td>
+<td>米国株中心、30年超の履歴</td>
+<td>分割/配当調整が丁寧、学術/個人向けに安価</td>
+<td>銘柄横断の一括ファンダメンタルズはやや弱い</td>
+<td>個人利用なら低コスト〜無料枠あり</td>
+</tr>
+<tr>
+<td><strong>EODHD</strong></td>
+<td>150,000銘柄超、70取引所</td>
+<td>ファンダメンタルズ込み、一括ダウンロードAPIあり、コスパ良好</td>
+<td>データ品質は銘柄によりムラの指摘あり</td>
+<td>月額$20程度〜</td>
+</tr>
+<tr>
+<td><strong>Polygon.io(現Massive)</strong></td>
+<td>米国全取引所、2003年〜</td>
+<td>リアルタイム/低レイテンシ、板情報まで対応</td>
+<td>日次バッチ用途にはオーバースペック・やや高価</td>
+<td>用途により幅広い価格帯</td>
+</tr>
+</tbody>
+</table>
+<p><strong>推奨</strong>: 初期構築は<strong>Tiingo(価格データ)+ EODHD(ファンダ拡張用)</strong>の組み合わせでコストを抑えつつ開始し、リアルタイム性が必要になった段階でPolygonへの切替/併用を検討。</p>
+<h3 id="24">2.4 更新頻度</h3>
+<ul>
+<li>日次(米国市場引け後、日本時間の早朝)にバッチ取得 → 特徴量再計算 → レポート生成、を1パイプラインとして設計</li>
+</ul>
+<hr />
+<h2 id="3">3. 特徴量エンジニアリング層</h2>
+<table>
+<thead>
+<tr>
+<th>特徴量</th>
+<th>計算方法</th>
+<th>用途</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>SMA50 / SMA150 / SMA200</td>
+<td>単純移動平均</td>
+<td>トレンドテンプレート、ステージ判定</td>
+</tr>
+<tr>
+<td>52週高値・安値</td>
+<td>直近252営業日のローリング最大・最小</td>
+<td>トレンドテンプレート条件6・7</td>
+</tr>
+<tr>
+<td>RSレーティング近似値</td>
+<td><code>0.4×3ヶ月騰落率 + 0.2×6ヶ月 + 0.2×9ヶ月 + 0.2×12ヶ月</code> をユニバース内でパーセンタイル化(1-99)</td>
+<td>トレンドテンプレート条件8</td>
+</tr>
+<tr>
+<td>ATR(14)</td>
+<td>Average True Range</td>
+<td>VCP収縮幅の正規化、ボラティリティ比較</td>
+</tr>
+<tr>
+<td>ADR%</td>
+<td>過去20日の高安レンジ平均を価格比%化</td>
+<td>銘柄の値動きの荒さの把握、ストップ幅設計</td>
+</tr>
+<tr>
+<td>出来高移動平均(50日)</td>
+<td>出来高SMA</td>
+<td>VCP出来高ドライアップ判定、ブレイク時出来高急増判定</td>
+</tr>
+<tr>
+<td>MA傾き(200日の1ヶ月変化率)</td>
+<td>SMA200の21営業日前との差分</td>
+<td>ステージ分類</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="4">4. ルールエンジン(トレンドテンプレート・一次フィルタ)</h2>
+<p>調査レポート「5. スクリーニング・ロジックへの落とし込み」の表をそのままハードフィルタとして実装する。8条件をすべて満たす銘柄のみが次段階(ステージ精査・VCP検出)に進む。この段階で全ユニバース(~8,000)から数百銘柄程度まで絞り込めることが期待値。</p>
+<p><strong>実装上の注意</strong>
+- 条件は全てAND条件。一部だけ緩めた「準合格リスト」も別枠で保持しておくと、ブレイク直前の監視銘柄を見逃さずに済む
+- RS近似式はIBD公式値と厳密には一致しない前提を運用ルールに明記し、閾値(70)は自ユニバースでの再キャリブレーションを推奨</p>
+<hr />
+<h2 id="5">5. ステージ分類器</h2>
+<p>ルールベースで実装可能なヒューリスティック例:</p>
+<ol>
+<li><strong>Stage 2判定</strong>: トレンドテンプレート8条件を満たす → Stage 2候補</li>
+<li><strong>Stage 1判定</strong>: 200日線の傾きがほぼ横ばい(直近1ヶ月変化率が±2%以内)、価格が200日線付近でレンジ、出来高が過去平均以下 → Stage 1(監視リスト)</li>
+<li><strong>Stage 3判定</strong>: 直近でトレンドテンプレートを満たしていたが、50日線が150日線を割り込む、または200日線の傾きが鈍化(直近1ヶ月変化率がプラスから縮小) → Stage 3(利益確定検討/新規除外)</li>
+<li><strong>Stage 4判定</strong>: 価格が200日線を明確に下回り、200日線が下向き → Stage 4(対象外)</li>
+</ol>
+<p>ステージはあくまで「4分類の近似」であり、境界は曖昧になりうる。将来的には教師データ(過去の確定ステージのラベル)を作り、機械学習分類器(勾配ブースティング等)への置き換えも視野に入れる。</p>
+<hr />
+<h2 id="6-vcp">6. VCP検出アルゴリズム</h2>
+<p>本手法の核心かつ最難関部分。以下のパイプラインを提案する。</p>
+<h3 id="61">6.1 スイングポイント検出</h3>
+<ul>
+<li>ZigZag法(一定%以上の反転を基準に高値・安値を抽出)またはフラクタル法(N本前後より高い/低い足を極値とする)で、直近base候補期間(例: 直近3〜6ヶ月)のスイングハイ・スイングローを抽出</li>
+</ul>
+<h3 id="62-contraction">6.2 収縮(Contraction)の測定</h3>
+<ul>
+<li>連続するスイングハイ→スイングローのペアを「押し」とみなし、各押しの下落率(%)を算出</li>
+<li>押しを時系列順に並べ、下落率が<strong>単調減少に近い系列</strong>になっているかを評価(完全な単調減少でなくてもよいが、直近の押しほど浅くなっている傾向をスコア化)</li>
+<li>押しの回数(2〜6回程度が正常域)、base全体の期間(数週間〜数ヶ月)も評価軸に含める</li>
+</ul>
+<h3 id="63">6.3 出来高ドライアップの評価</h3>
+<ul>
+<li>各押しの期間中の平均出来高を50日出来高平均と比較し、押しが進むごとに出来高が減少しているかを確認</li>
+<li>直近の押し(ピボット直前)の出来高が最も少ない状態が理想</li>
+</ul>
+<h3 id="64">6.4 タイト化(値幅収縮)の評価</h3>
+<ul>
+<li>直近5〜10営業日のATR、または日々の高安レンジ%が、base開始時点と比べて縮小しているかを確認</li>
+</ul>
+<h3 id="65">6.5 ピボットポイントの特定とブレイク判定</h3>
+<ul>
+<li>base内の直近スイングハイを「ピボットポイント」として登録</li>
+<li>当日終値がピボットポイントを上抜け、かつ出来高が50日平均比+40〜50%以上 → ブレイクシグナル発火</li>
+</ul>
+<h3 id="66-vcp">6.6 VCPスコア化</h3>
+<p>上記4要素(収縮の単調性、押しの回数、出来高ドライアップ度、値幅タイト化度)を重み付け合成し、0〜100のVCPスコアとして出力する。閾値以上をVCP成立候補、ブレイク条件も満たしたものを「本日の買いシグナル」として最上位に表示する。</p>
+<blockquote>
+<p><strong>留意点</strong>: VCPはミネルヴィニ自身の著書でも「厳密な数式」ではなく経験則・パターン認識として説明されている。ルールベースのスコアは有効なスクリーニングの一次選抜として機能するが、最終判断は人間によるチャート目視確認を残すハイブリッド運用を推奨する。</p>
+</blockquote>
+<hr />
+<h2 id="7">7. 類似チャート検索エンジン</h2>
+<p>「(B)類似チャート発掘」を実現する層。2方式を併用する設計とする。</p>
+<h3 id="71">7.1 特徴ベクトル方式(構造的類似度)</h3>
+<ul>
+<li>各銘柄の直近N日(例: 60〜120営業日)について、以下を正規化した特徴ベクトルを構築:</li>
+<li>トレンドテンプレート各条件の充足度(0/1またはマージン%)</li>
+<li>RS近似順位</li>
+<li>VCPスコアおよびその内訳(収縮回数・出来高ドライアップ度・タイト化度)</li>
+<li>出来高プロファイル(base期間平均出来高/直近出来高比)</li>
+<li>参照銘柄(ユーザー指定 or 過去の成功事例ライブラリ)とのコサイン類似度、またはkNN(scikit-learn / faissによる近似最近傍探索)でランキング</li>
+<li>用途: 「数値的な特徴が似ている」銘柄を高速に大量スクリーニングする</li>
+</ul>
+<h3 id="72">7.2 形状ベース方式(視覚的類似度)</h3>
+<ul>
+<li>価格系列を対数リターン化 or Min-Maxスケーリングし、長さの異なる期間同士でも比較可能にする</li>
+<li><strong>DTW(Dynamic Time Warping)</strong> を用いて、時間軸の伸縮を許容しながら「見た目のカーブの形」が似ている区間を検索(<code>dtaidistance</code>、<code>tslearn</code>等のライブラリで実装可能)</li>
+<li>用途: 「このチャートの形にそっくり」という直感的な類似性を定量評価する。ミネルヴィニ自身も過去の成功パターンとの視覚的類似性を重視するため、この方式は手法の思想と親和性が高い</li>
+</ul>
+<h3 id="73">7.3 参照ライブラリの構築</h3>
+<ul>
+<li>過去の実際のミネルヴィニ的成功銘柄(ブレイク前のVCP形成期間のチャート)を「お手本」としてライブラリ化し、日々のスクリーニング結果をこのライブラリとの類似度でランキングする運用を想定</li>
+<li>ライブラリは自身の取引記録やスクリーニング結果の蓄積から徐々に拡充していく設計とする(最初は数銘柄からで良い)</li>
+</ul>
+<hr />
+<h2 id="8">8. マクロゲート連携</h2>
+<p><a href="../マーケット分析/01_マーケット環境判断フレームワーク.md">マーケット分析/01_マーケット環境判断フレームワーク.md</a>で定義した「強気/警戒/弱気」の3区分を、日次バッチの最初に計算し、後段のランキング・アラート層に受け渡す。警戒・弱気時は個別銘柄スコアを減点、または新規推奨から除外して監視リストへ格下げする。</p>
+<hr />
+<h2 id="9">9. バックテスト・検証層</h2>
+<ul>
+<li>過去N年分のデータに対しスクリーニングロジックを再実行し、シグナル発生日を特定</li>
+<li>シグナル後の1週間・1ヶ月・3ヶ月リターン分布を算出し、ベンチマーク(S&amp;P500)と比較</li>
+<li>ヒット率(一定%以上上昇した割合)、平均リターン、最大ドローダウンを評価指標とする</li>
+<li>サバイバーシップバイアス回避のため、上場廃止銘柄も含めたユニバースでバックテストすることが必須</li>
+<li>VCPスコアやトレンドテンプレート閾値のチューニングはこの層の結果に基づいて行う(カーブフィッティングに注意し、in-sample/out-of-sampleを分けて検証)</li>
+</ul>
+<hr />
+<h2 id="10">10. 出力層</h2>
+<ul>
+<li>日次Markdown/HTMLレポート: 本日の新規シグナル銘柄、VCPスコア上位銘柄、類似検索結果、マーケット環境サマリー</li>
+<li>ウォッチリストCSV出力(証券会社のウォッチリスト機能へのインポート用)</li>
+<li>将来拡張: Streamlit等による簡易ダッシュボード化、チャート画像の自動生成・貼付</li>
+</ul>
+<hr />
+<h2 id="11">11. 技術スタック推奨</h2>
+<table>
+<thead>
+<tr>
+<th>領域</th>
+<th>推奨技術</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>言語</td>
+<td>Python</td>
+</tr>
+<tr>
+<td>データ処理</td>
+<td>pandas, numpy, pandas-ta(テクニカル指標)</td>
+</tr>
+<tr>
+<td>DTW計算</td>
+<td>dtaidistance または tslearn</td>
+</tr>
+<tr>
+<td>類似検索(kNN)</td>
+<td>scikit-learn(小規模)、faiss(大規模・高速化時)</td>
+</tr>
+<tr>
+<td>ストレージ</td>
+<td>Parquet ファイル または DuckDB(軽量・分析向けSQL)</td>
+</tr>
+<tr>
+<td>スケジューリング</td>
+<td>cron / Windowsタスクスケジューラ</td>
+</tr>
+<tr>
+<td>レポート出力</td>
+<td>Jinja2 + Markdown、将来的にStreamlit</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="12">12. フェーズ別ロードマップ</h2>
+<table>
+<thead>
+<tr>
+<th>フェーズ</th>
+<th>内容</th>
+<th>成果物イメージ</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Phase 1</td>
+<td>データ取得パイプライン + トレンドテンプレート8条件スクリーナー</td>
+<td>日次で条件合格銘柄リストが出力される</td>
+</tr>
+<tr>
+<td>Phase 2</td>
+<td>VCP検出アルゴリズム実装・スコア化</td>
+<td>スクリーニング結果にVCPスコア・ピボット価格が付与される</td>
+</tr>
+<tr>
+<td>Phase 3</td>
+<td>類似チャート検索エンジン(特徴ベクトル→DTW形状の順で拡張)</td>
+<td>参照銘柄を指定すると類似銘柄リストが得られる</td>
+</tr>
+<tr>
+<td>Phase 4</td>
+<td>バックテスト・検証フレームワーク</td>
+<td>過去データでの有効性レポート、閾値チューニング</td>
+</tr>
+<tr>
+<td>Phase 5</td>
+<td>マクロゲート統合・自動レポート配信・アラート化</td>
+<td>完全自動化された日次ワークフロー</td>
+</tr>
+</tbody>
+</table>
+<hr />
+<h2 id="13">13. 既知の限界・留意点</h2>
+<ul>
+<li><strong>RSレーティング近似式の精度</strong>: IBD公式値とは一致しない可能性があり、閾値(70)は自前ユニバースでの再キャリブレーションが必要</li>
+<li><strong>VCPの主観性</strong>: 定性的パターンであり、完全なルール化には限界がある。スコアリングはあくまで一次選抜であり、最終的な目視確認を組み込むハイブリッド運用を推奨</li>
+<li><strong>データコスト</strong>: 全米国株×数年分のデータ・ファンダメンタルズ込みで運用する場合、月額数千円〜数万円規模のデータ費用が発生しうる</li>
+<li><strong>カーブフィッティングリスク</strong>: VCP閾値や類似度閾値をバックテスト結果に過度に最適化すると、将来のパフォーマンスが劣化するリスクがある。out-of-sample検証を必須とする</li>
+<li><strong>サバイバーシップバイアス</strong>: 上場廃止銘柄を含まないデータでバックテストすると成績が過大評価されるため注意</li>
+</ul>
+<hr />
+<h2 id="14">14. 参考情報源</h2>
+<ul>
+<li><a href="https://www.ksred.com/the-complete-guide-to-financial-data-apis-building-your-own-stock-market-data-pipeline-in-2025/">ksred.com: Financial Data APIs Compared</a></li>
+<li><a href="https://eodhd.com/lp/historical-eod-api">EODHD: Historical Prices API</a></li>
+<li><a href="https://docs.kx.com/1.7/KDB_AI/Learn/dynamic-time-warping.htm">KDB.AI: Temporal Search with Dynamic Time Warping</a></li>
+<li><a href="https://medium.com/@crisvelasquez/pattern-mining-for-stock-prediction-with-dynamic-time-warping-3f8df5fb4c5b">Medium: Pattern Mining for Stock Prediction with Dynamic Time Warping</a></li>
+<li><a href="https://arxiv.org/pdf/2407.13751">arXiv: Temporal Representation Learning for Stock Similarities</a></li>
+</ul></section>
+<section class="doc" id="deep-research"><h1 id="_1">ディープリサーチ: ミネルヴィニ手法の実証根拠と限界</h1>
+<p>最終更新: 2026-07-31</p>
+<p><code>01_ミネルヴィニ投資手法_調査レポート.md</code>・Phase 4バックテスト結果を踏まえ、①RSレーティング近似式の妥当性、②実際の成功事例、③第三者による同種システムの長期検証、の3点を追加調査した。</p>
+<hr />
+<h2 id="1-rs">1. RSレーティング近似式の妥当性 — 確認できた</h2>
+<p><code>trend_template.py</code>で採用した近似式は、複数の独立したソース(Stockbeeブログ、GitHub <code>skyte/relative-strength</code>等)で一致して報告されている「業界標準の再現式」と完全に一致した。</p>
+<pre><code>StrengthFactor = 0.4×ROC(63日) + 0.2×ROC(126日) + 0.2×ROC(189日) + 0.2×ROC(252日)
+→ ユニバース内でパーセンタイル化(1-99)
+</code></pre>
+<p>2024-2025年にかけての公式な計算式変更の報告は見当たらなかった。<strong>実装の妥当性は追加調査でも裏付けられた</strong>。</p>
+<hr />
+<h2 id="2">2. ミネルヴィニ自身の実績 — 本物だが「別ゲーム」</h2>
+<ul>
+<li>2021年の米国投資選手権で<strong>監査済み+334%</strong>のリターンを記録し優勝(2度目の優勝)。</li>
+<li>2025年選手権(9ヶ月時点)でも、450名超の参加者中、$100万部門トップ10のうち6名が彼の顧客・クライアント。</li>
+<li>ドキュメント化された実トレード例: <strong>$XLE(エネルギーセレクトSPDR)を2022年1月4日に購入し、ピークまで+70%超</strong>(<a href="https://creators.spotify.com/pod/profile/traderlion/episodes/33-500-RETURN---Mark-Minervinis-VCP-Setup-that-made-him-Millions-e2pij3r">TraderLionポッドキャスト</a>で言及)。ETFにも同じトレンドテンプレート/VCPロジックを適用している点は興味深い。</li>
+<li>「33,500%リターン」という有名なエピソードも複数の情報源で言及されているが、<strong>具体的な銘柄名・詳細な検証可能な記録は今回の調査では特定できなかった</strong>(伝聞的な紹介にとどまる)。</li>
+</ul>
+<p><strong>重要な注意</strong>: これらは<strong>裁量トレード</strong>であり、以下の点で私たちの機械的バックテストとは別物:
+- 集中投資(推奨銘柄数点への集中、Phase 1-4で検証した「幅広い銘柄への機械的分散」とは真逆)
+- ピラミッディング(勝ちポジションへの追加)・利食いの半分利確・建値へのストップ引き上げなど、動的なポジション管理
+- おそらくレバレッジの活用
+- ブレイクアウトのタイミング・見送り判断における裁量(VCPスコアの閾値だけでなく、出来高の質感・セクター動向・地合いなど定性判断)</p>
+<p>→ <strong>「スクリーニング条件を満たす」ことと「ミネルヴィニ本人が出す成績」の間には、実行力(ポジションサイジング・利食い・損切りの技術)という大きなギャップがある</strong>。これは自動化システムが原理的に埋めにくい部分。</p>
+<hr />
+<h2 id="3">3. 第三者による同種システムの長期検証 — 重要な比較データ</h2>
+<p><a href="https://www.crackingmarkets.com/us-stock-momentum-trading-system-for-retail-traders-deep-research/">crackingmarkets.com: US Stock Momentum Trading System for Retail Traders</a> より、類似のモメンタム/トレンドフォロー系システムの長期(16-20年)検証結果:</p>
+<table>
+<thead>
+<tr>
+<th>指標</th>
+<th>数値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>CAGR(Arthur Hill 15銘柄システム, 2001-2016)</td>
+<td>約14.3%</td>
+</tr>
+<tr>
+<td>CAGR(Validea 10銘柄モデル, 2003-2023)</td>
+<td>約11.8%(対 S&amp;P500 8.7%)</td>
+</tr>
+<tr>
+<td>勝率</td>
+<td>約57%(43%が損失)</td>
+</tr>
+<tr>
+<td>平均利益/平均損失</td>
+<td>平均利益が平均損失の2.5倍</td>
+</tr>
+<tr>
+<td>最大ドローダウン(200日線フィルターあり)</td>
+<td>20-21%</td>
+</tr>
+<tr>
+<td>最大ドローダウン(フィルターなし)</td>
+<td>約45%</td>
+</tr>
+<tr>
+<td>累積リターン(2003-2023)</td>
+<td>10倍超(S&amp;P500は6倍)</td>
+</tr>
+</tbody>
+</table>
+<p><strong>既知の弱点(第三者検証より)</strong>:
+1. <strong>モメンタムクラッシュ</strong>: 長期下落後の急反発局面で壊滅的(2009年で-73%の崩壊事例)。V字回復では出遅れた「がれき株」が急騰し、モメンタム/トレンド系はまさにその局面で最も弱い。
+2. <strong>高い売買回転率</strong>: 年200-300%の回転 → スリッページ・短期譲渡益課税で数%のリターンが消失しうる。
+3. <strong>方向感のない相場での弱さ</strong>。</p>
+<h3 id="phase-4">私たちのPhase 4結果との整合性</h3>
+<ul>
+<li>第三者検証の「勝率57%・平均利益が平均損失の2.5倍」という非対称な構造は、私たちのPhase 4で見た「対SPY超過勝率は45-48%とコインフリップ以下だが平均超過リターンはプラス」という歪んだ分布の結果と<strong>方向性が一致</strong>している(少数の大勝ちが平均を牽引する構造)。</li>
+<li>「2022年を含めるとエッジが縮小した」という私たちの発見は、モメンタム系全般が<strong>下降相場・レジーム転換期に弱い</strong>という第三者研究/アカデミック文献の指摘とも整合的。</li>
+<li>第三者システムの年率超過リターン(+3-6pt程度)は、私たちのPhase 4(63日超過+0.7〜1.5%程度、年率換算すると近い水準)と<strong>概ね同じオーダー</strong>であり、突飛な数字ではない。</li>
+</ul>
+<hr />
+<h2 id="4-design-doc">4. 総合結論・design docへの追加事項</h2>
+<ul>
+<li><strong>手法自体の「エッジ」は実在するが、規模は控えめ</strong>(年率数ポイント程度)というのが、私たち自身の検証と第三者検証の両方が示す一致した絵。ミネルヴィニ本人の実績は、これに「卓越した実行力」が掛け合わさった結果と考えるのが妥当。</li>
+<li><strong>Phase 4の既知の限界に追加すべき項目</strong>:</li>
+<li>取引コスト・スリッページ・売買回転率を考慮していない(現状のバックテストは理論上のグロスリターン)</li>
+<li>短期譲渡益課税の影響を考慮していない</li>
+<li>モメンタムクラッシュ(急落後の急反発)への耐性を検証していない — 2020年3月のようなV字回復局面を含む期間での個別検証が望ましい</li>
+<li>自動化システムは裁量トレードの「利食い・損切りの技術」を再現できていない(固定期間リターンで評価しているのみ)</li>
+</ul>
+<hr />
+<h2 id="5">5. 参考情報源</h2>
+<ul>
+<li><a href="https://stockbee.blogspot.com/2017/05/how-to-setup-ibd-style-relative.html">Stockbee: How to setup IBD style Relative Strength Ranking for stocks</a></li>
+<li><a href="https://github.com/skyte/relative-strength">GitHub: skyte/relative-strength</a></li>
+<li><a href="https://creators.spotify.com/pod/profile/traderlion/episodes/33-500-RETURN---Mark-Minervinis-VCP-Setup-that-made-him-Millions-e2pij3r">TraderLion Podcast: Mark Minervini's VCP Setup</a></li>
+<li><a href="https://tradersunion.com/news/market-voices/show/1034208-us-investing-championship/">Traders Union: Mark Minervini sees clients excel at US Investing Championship</a></li>
+<li><a href="https://www.crackingmarkets.com/us-stock-momentum-trading-system-for-retail-traders-deep-research/">crackingmarkets.com: US Stock Momentum Trading System for Retail Traders (Deep research)</a></li>
+</ul></section>
+  </div>
+</div>
+
+<footer>生成日時: 2026-08-02。投資助言ではありません。</footer>
+
+<script>
+  document.querySelectorAll(".doc table").forEach(t => {
+    const wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    t.parentNode.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
+</script>
