@@ -104,6 +104,7 @@
   .section-head .sub { font-size: 0.86rem; color: var(--ink-2); }
 
   .grid { display: grid; gap: 16px; }
+  .grid-auto { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
   .grid-4 { grid-template-columns: repeat(4, 1fr); }
   .grid-3 { grid-template-columns: repeat(3, 1fr); }
   .grid-2 { grid-template-columns: repeat(2, 1fr); }
@@ -179,9 +180,9 @@
   <div class="section">
     <div class="section-head">
       <h2>① 過熱度</h2>
-      <span class="sub">VIX・VIX期間構造・S&amp;P500の幅(値がさ株頼みになっていないか)・新高値/新安値</span>
+      <span class="sub">VIX・VIX期間構造・SKEW(テールリスク)・S&amp;P500の幅(値がさ株頼みになっていないか)・新高値/新安値</span>
     </div>
-    <div class="grid grid-4" id="overheatCards"></div>
+    <div class="grid grid-auto" id="overheatCards"></div>
   </div>
 
   <div class="section">
@@ -211,7 +212,7 @@
   </div>
 
   <footer>
-    データ: Yahoo Finance(VIX・VIX3M)、AAII Investor Sentiment Survey(個人投資家、週次)、
+    データ: Yahoo Finance(VIX・VIX3M・SKEW)、AAII Investor Sentiment Survey(個人投資家、週次)、
     JPX(信用取引現在高、東証+名証、週次)、
     CFTC Commitments of Traders(E-mini S&amp;P500先物、Asset Manager/Institutional・Leveraged Funds区分、週次)。すべて無料・登録不要の公開情報。
     生成日時: <span class="mono" id="footDate">—</span>。
@@ -222,7 +223,7 @@
 <script>
 (function(){
   "use strict";
-  const P = {"meta": {"date": "2026-08-02", "universe": "sp500"}, "vix": {"level": 15.99, "percentile_1y": 23.3, "label": "平常"}, "vixTerm": {"vix": 15.99, "vix3m": 20.54, "ratio": 0.778, "label": "順イールド(平常)"}, "breadth": {"n_total": 500, "pct_above_50ma": 62.8, "pct_above_200ma": 68.4, "new_highs": 4, "new_lows": 3}, "aaii": {"date": "7/29/2026", "bull_pct": 31.0, "neutral_pct": 26.9, "bear_pct": 42.1, "history": [{"date": "7/29/2026", "bull_pct": 31.0, "neutral_pct": 26.9, "bear_pct": 42.1}]}, "jpxMargin": {"date": "2026-06-26", "bought_thousand_shares": 3940572, "sold_thousand_shares": 498572, "ratio": 7.9, "history": [{"date": "2025-06-20", "ratio": 7.67}, {"date": "2025-06-27", "ratio": 8.0}, {"date": "2025-07-04", "ratio": 7.98}, {"date": "2025-07-11", "ratio": 7.49}, {"date": "2025-07-18", "ratio": 7.53}, {"date": "2025-07-25", "ratio": 6.85}, {"date": "2025-08-01", "ratio": 6.82}, {"date": "2025-08-08", "ratio": 6.36}, {"date": "2025-08-15", "ratio": 6.16}, {"date": "2025-08-22", "ratio": 6.14}, {"date": "2025-08-29", "ratio": 7.22}, {"date": "2025-09-05", "ratio": 6.99}, {"date": "2025-09-12", "ratio": 6.5}, {"date": "2025-09-19", "ratio": 6.45}, {"date": "2025-09-26", "ratio": 4.5}, {"date": "2025-10-03", "ratio": 8.94}, {"date": "2025-10-10", "ratio": 9.18}, {"date": "2025-10-17", "ratio": 9.16}, {"date": "2025-10-24", "ratio": 8.73}, {"date": "2025-10-31", "ratio": 9.56}, {"date": "2025-11-07", "ratio": 10.0}, {"date": "2025-11-14", "ratio": 9.45}, {"date": "2025-11-21", "ratio": 8.77}, {"date": "2025-11-28", "ratio": 8.63}, {"date": "2025-12-05", "ratio": 8.88}, {"date": "2025-12-12", "ratio": 8.4}, {"date": "2025-12-19", "ratio": 8.34}, {"date": "2025-12-26", "ratio": 6.89}, {"date": "2026-01-09", "ratio": 8.89}, {"date": "2026-01-16", "ratio": 8.52}, {"date": "2026-01-23", "ratio": 8.71}, {"date": "2026-01-30", "ratio": 9.12}, {"date": "2026-02-06", "ratio": 8.48}, {"date": "2026-02-13", "ratio": 7.84}, {"date": "2026-02-20", "ratio": 7.64}, {"date": "2026-02-27", "ratio": 8.09}, {"date": "2026-03-06", "ratio": 8.0}, {"date": "2026-03-13", "ratio": 7.28}, {"date": "2026-03-19", "ratio": 7.05}, {"date": "2026-03-27", "ratio": 4.2}, {"date": "2026-04-03", "ratio": 7.81}, {"date": "2026-04-10", "ratio": 8.18}, {"date": "2026-04-17", "ratio": 8.04}, {"date": "2026-04-24", "ratio": 8.24}, {"date": "2026-05-01", "ratio": 8.99}, {"date": "2026-05-15", "ratio": 8.52}, {"date": "2026-05-22", "ratio": 8.2}, {"date": "2026-05-29", "ratio": 8.77}, {"date": "2026-06-05", "ratio": 8.94}, {"date": "2026-06-12", "ratio": 9.01}, {"date": "2026-06-19", "ratio": 8.94}, {"date": "2026-06-26", "ratio": 7.9}]}, "cot": {"date": "July 28, 2026", "long": 1159241, "short": 214471, "net": 944770, "net_change_wow": 15611, "history": [{"date": "July 28, 2026", "long": 1159241, "short": 214471, "net": 944770, "net_change_wow": 15611}]}, "cotLeveraged": {"date": "July 28, 2026", "long": 155964, "short": 453440, "net": -297476, "net_change_wow": 25389, "history": [{"date": "July 28, 2026", "long": 155964, "short": 453440, "net": -297476, "net_change_wow": 25389}]}, "overheatLabel": "中立"};
+  const P = {"meta": {"date": "2026-08-02", "universe": "sp500"}, "vix": {"level": 15.99, "percentile_1y": 23.3, "label": "平常"}, "vixTerm": {"vix": 15.99, "vix3m": 20.54, "ratio": 0.778, "label": "順イールド(平常)"}, "skew": {"level": 141.2, "percentile_1y": 19.1, "label": "テールリスク警戒(やや強い)"}, "breadth": {"n_total": 500, "pct_above_50ma": 62.8, "pct_above_200ma": 68.4, "new_highs": 4, "new_lows": 3}, "aaii": {"date": "7/29/2026", "bull_pct": 31.0, "neutral_pct": 26.9, "bear_pct": 42.1, "history": [{"date": "7/29/2026", "bull_pct": 31.0, "neutral_pct": 26.9, "bear_pct": 42.1}]}, "jpxMargin": {"date": "2026-06-26", "bought_thousand_shares": 3940572, "sold_thousand_shares": 498572, "ratio": 7.9, "history": [{"date": "2025-06-20", "ratio": 7.67}, {"date": "2025-06-27", "ratio": 8.0}, {"date": "2025-07-04", "ratio": 7.98}, {"date": "2025-07-11", "ratio": 7.49}, {"date": "2025-07-18", "ratio": 7.53}, {"date": "2025-07-25", "ratio": 6.85}, {"date": "2025-08-01", "ratio": 6.82}, {"date": "2025-08-08", "ratio": 6.36}, {"date": "2025-08-15", "ratio": 6.16}, {"date": "2025-08-22", "ratio": 6.14}, {"date": "2025-08-29", "ratio": 7.22}, {"date": "2025-09-05", "ratio": 6.99}, {"date": "2025-09-12", "ratio": 6.5}, {"date": "2025-09-19", "ratio": 6.45}, {"date": "2025-09-26", "ratio": 4.5}, {"date": "2025-10-03", "ratio": 8.94}, {"date": "2025-10-10", "ratio": 9.18}, {"date": "2025-10-17", "ratio": 9.16}, {"date": "2025-10-24", "ratio": 8.73}, {"date": "2025-10-31", "ratio": 9.56}, {"date": "2025-11-07", "ratio": 10.0}, {"date": "2025-11-14", "ratio": 9.45}, {"date": "2025-11-21", "ratio": 8.77}, {"date": "2025-11-28", "ratio": 8.63}, {"date": "2025-12-05", "ratio": 8.88}, {"date": "2025-12-12", "ratio": 8.4}, {"date": "2025-12-19", "ratio": 8.34}, {"date": "2025-12-26", "ratio": 6.89}, {"date": "2026-01-09", "ratio": 8.89}, {"date": "2026-01-16", "ratio": 8.52}, {"date": "2026-01-23", "ratio": 8.71}, {"date": "2026-01-30", "ratio": 9.12}, {"date": "2026-02-06", "ratio": 8.48}, {"date": "2026-02-13", "ratio": 7.84}, {"date": "2026-02-20", "ratio": 7.64}, {"date": "2026-02-27", "ratio": 8.09}, {"date": "2026-03-06", "ratio": 8.0}, {"date": "2026-03-13", "ratio": 7.28}, {"date": "2026-03-19", "ratio": 7.05}, {"date": "2026-03-27", "ratio": 4.2}, {"date": "2026-04-03", "ratio": 7.81}, {"date": "2026-04-10", "ratio": 8.18}, {"date": "2026-04-17", "ratio": 8.04}, {"date": "2026-04-24", "ratio": 8.24}, {"date": "2026-05-01", "ratio": 8.99}, {"date": "2026-05-15", "ratio": 8.52}, {"date": "2026-05-22", "ratio": 8.2}, {"date": "2026-05-29", "ratio": 8.77}, {"date": "2026-06-05", "ratio": 8.94}, {"date": "2026-06-12", "ratio": 9.01}, {"date": "2026-06-19", "ratio": 8.94}, {"date": "2026-06-26", "ratio": 7.9}]}, "cot": {"date": "July 28, 2026", "long": 1159241, "short": 214471, "net": 944770, "net_change_wow": 15611, "history": [{"date": "July 28, 2026", "long": 1159241, "short": 214471, "net": 944770, "net_change_wow": 15611}]}, "cotLeveraged": {"date": "July 28, 2026", "long": 155964, "short": 453440, "net": -297476, "net_change_wow": 25389, "history": [{"date": "July 28, 2026", "long": 155964, "short": 453440, "net": -297476, "net_change_wow": 25389}]}, "overheatLabel": "中立"};
 
   function fmtNum(v, nd){ return v == null ? "—" : Number(v).toFixed(nd == null ? 1 : nd); }
   function fmtInt(v){ return v == null ? "—" : Math.round(v).toLocaleString(); }
@@ -308,7 +309,17 @@
   } else {
     vixTermHtml = `<h3>VIX期間構造(VIX3M比)</h3><div class="unavailable">データ取得できませんでした</div>`;
   }
-  overheatWrap.innerHTML = `<div class="card">${vixHtml}</div><div class="card">${vixTermHtml}</div><div class="card">${breadthHtml}</div><div class="card">${newHighLowHtml}</div>`;
+  const skew = P.skew;
+  let skewHtml;
+  if (skew) {
+    skewHtml = `<h3>SKEW(テールリスク)</h3>
+      <div class="big">${fmtNum(skew.level, 1)}</div>
+      <div class="sub-line">1年パーセンタイル: ${fmtNum(skew.percentile_1y,0)}%点(100が理論上のフラット、135以上でテールリスクへの警戒が強いとされる目安)</div>
+      <div class="sub-line" style="margin-top:8px;font-weight:700;">${skew.label}</div>`;
+  } else {
+    skewHtml = `<h3>SKEW(テールリスク)</h3><div class="unavailable">データ取得できませんでした</div>`;
+  }
+  overheatWrap.innerHTML = `<div class="card">${vixHtml}</div><div class="card">${vixTermHtml}</div><div class="card">${skewHtml}</div><div class="card">${breadthHtml}</div><div class="card">${newHighLowHtml}</div>`;
 
   // ---- ② AAII ----
   const aaiiBlock = document.getElementById("aaiiBlock");
