@@ -455,10 +455,10 @@
 
   function fmtPrice(p){ return p==null ? "—" : "$" + Number(p).toFixed(2); }
   function fmtPct(p){ return p==null ? "—" : (p>=0?"+":"") + Number(p).toFixed(1) + "%"; }
-  function fmtDate(iso){
+  function fmtDate(iso, tf){
     if (!iso) return "—";
     const [y,m,d] = iso.split("-");
-    return `${y}/${m}/${d}`;
+    return tf === "M" ? `${y}/${m}` : `${y}/${m}/${d}`;
   }
 
   function vcpColor(score){
@@ -750,12 +750,19 @@
       ctx.fillText("$"+v.toFixed(0), W-pad.r+8, y+4);
     }
 
-    // date ticks
+    // date ticks — count is derived from measured label width so labels
+    // never collide, whether on a narrow phone screen or a wide desktop
+    // window, and regardless of format length (D/W show YYYY/MM/DD, M
+    // shows the shorter YYYY/MM since each bar already spans a month).
     ctx.fillStyle = col("--muted"); ctx.font = "11px 'Segoe UI', sans-serif"; ctx.textAlign = "center";
-    const dateTickCount = 5;
+    const longestLabelW = Math.max(
+      ctx.measureText(fmtDate(d.dates[idx[0]], tf)).width,
+      ctx.measureText(fmtDate(d.dates[idx[idx.length-1]], tf)).width,
+    );
+    const dateTickCount = Math.max(1, Math.min(6, Math.floor(plotW / (longestLabelW + 16))));
     for (let s=0;s<=dateTickCount;s++){
       const i = idx[Math.round(s/dateTickCount*(idx.length-1))];
-      ctx.fillText(fmtDate(d.dates[i]), X(i), H-pad.b+18);
+      ctx.fillText(fmtDate(d.dates[i], tf), X(i), H-pad.b+18);
     }
 
     ctx.strokeStyle = col("--ink-2"); ctx.font = "bold 12.5px 'Segoe UI', sans-serif";
