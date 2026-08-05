@@ -125,7 +125,12 @@ def run(universe_name: str = "sp500", top_similarity_refs: int = 3):
 
     pool_syms = qualifiers["symbol"].tolist() + watchlist["symbol"].tolist()
     print(f"\n=== fetching OHLCV + VCP analysis for pool ({len(pool_syms)} tickers) ===")
-    pool_ohlcv = fetch_ohlcv(pool_syms)
+    # 5y (not the default 2y) so the monthly timeframe toggle has enough
+    # history to show a real 5-year monthly chart, not ~2 years of monthly
+    # bars. Trend Template/VCP calcs are unaffected — they all window off the
+    # end of the series (see vcp.py's len(df)-lookback_bars pattern), so the
+    # extra leading history is purely additive for the chart.
+    pool_ohlcv = fetch_ohlcv(pool_syms, period="5y")
 
     vres_by_sym, profile_by_sym = {}, {}
     for sym in pool_syms:
