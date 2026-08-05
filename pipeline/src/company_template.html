@@ -1,0 +1,391 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COMPANY DESK — 企業情報・投資指標</title>
+<style>
+  @media (prefers-reduced-motion: no-preference) {
+    .row, .chip, tr.row, summary { transition: background-color .15s ease, border-color .15s ease; }
+  }
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --series-sma50: #2a78d6; --series-sma150: #1baf7a; --series-sma200: #4a3aa7;
+    --accent: #eb6834; --accent-ink: #ffffff;
+    --good: #0ca30c; --good-bg: rgba(12,163,12,0.12);
+    --warning: #b8790f; --warning-bg: rgba(250,178,25,0.22);
+    --critical: #d03b3b; --critical-bg: rgba(208,59,59,0.10);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --baseline: #383835;
+      --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+      --series-sma50: #3987e5; --series-sma150: #199e70; --series-sma200: #9085e9;
+      --accent: #d95926; --accent-ink: #ffffff;
+      --good: #0ca30c; --good-bg: rgba(12,163,12,0.18);
+      --warning: #fab219; --warning-bg: rgba(250,178,25,0.16);
+      --critical: #e66767; --critical-bg: rgba(230,103,103,0.16);
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --baseline: #383835;
+    --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+    --series-sma50: #3987e5; --series-sma150: #199e70; --series-sma200: #9085e9;
+    --accent: #d95926; --accent-ink: #ffffff;
+    --good: #0ca30c; --good-bg: rgba(12,163,12,0.18);
+    --warning: #fab219; --warning-bg: rgba(250,178,25,0.16);
+    --critical: #e66767; --critical-bg: rgba(230,103,103,0.16);
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --series-sma50: #2a78d6; --series-sma150: #1baf7a; --series-sma200: #4a3aa7;
+    --accent: #eb6834; --accent-ink: #ffffff;
+    --good: #0ca30c; --good-bg: rgba(12,163,12,0.12);
+    --warning: #b8790f; --warning-bg: rgba(250,178,25,0.22);
+    --critical: #d03b3b; --critical-bg: rgba(208,59,59,0.10);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    background: var(--page); color: var(--ink);
+    font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.6;
+  }
+  .mono { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; font-variant-numeric: tabular-nums; }
+  .serif { font-family: Cambria, Georgia, "Times New Roman", serif; }
+  h1,h2,h3 { text-wrap: balance; margin: 0; }
+  a { color: inherit; }
+
+  .shell { max-width: 1180px; margin: 0 auto; padding: 0 20px 64px; }
+  @media (max-width: 600px) {
+    .shell { padding: 0 12px 48px; }
+    .topbar-inner { padding: 12px; }
+    .brand .mark { font-size: 1.25rem; }
+    .detail-card { padding: 18px; }
+    .detail-name { font-size: 1.15rem; }
+  }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1180px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand .mark { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand .tagline { font-size: 0.8rem; color: var(--ink-2); letter-spacing: 0.03em; text-transform: uppercase; }
+  .backlink {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; font-weight: 700;
+    padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-strong); text-decoration: none;
+  }
+  .backlink:hover { background: color-mix(in srgb, var(--series-sma50) 8%, transparent); }
+
+  .notice {
+    margin: 22px 0; padding: 14px 18px; border-radius: 10px; border: 1px dashed var(--border-strong);
+    background: color-mix(in srgb, var(--muted) 9%, transparent);
+    font-size: 0.88rem; color: var(--ink-2);
+  }
+
+  .section { margin-top: 40px; }
+  .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
+  .section-head h2 { font-size: 1.35rem; font-weight: 700; }
+  .section-head .sub { font-size: 0.86rem; color: var(--ink-2); }
+
+  .search-row { display: flex; gap: 10px; margin-bottom: 14px; }
+  .search-row input {
+    flex: 1; font: inherit; font-size: 0.94rem; padding: 10px 14px; border-radius: 10px;
+    border: 1px solid var(--border-strong); background: var(--surface); color: var(--ink);
+  }
+  .search-row input:focus { outline: none; border-color: var(--series-sma50); }
+
+  .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; max-height: 480px; overflow-y: auto; }
+  table.scan { width: 100%; border-collapse: collapse; min-width: 760px; background: var(--surface); font-size: 0.92rem; }
+  table.scan th, table.scan td { padding: 11px 15px; text-align: left; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.scan thead th { font-size: 0.74rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; font-weight: 700; background: var(--surface); position: sticky; top: 0; }
+  table.scan tbody tr.row { cursor: pointer; }
+  table.scan tbody tr.row:hover { background: color-mix(in srgb, var(--accent) 8%, transparent); }
+  table.scan tbody tr.row.active { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  table.scan tbody tr.row.active td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+  .sym-cell { font-weight: 700; }
+  .num { font-family: "Cascadia Code", Consolas, monospace; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; }
+  .pill-good { background: var(--good-bg); color: var(--good); }
+  .pill-muted { background: color-mix(in srgb, var(--muted) 20%, transparent); color: var(--ink-2); }
+
+  .detail-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 24px 26px; }
+  .detail-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+  .detail-name { font-size: 1.4rem; font-weight: 700; }
+  .detail-sym { font-size: 1rem; color: var(--ink-2); margin-left: 8px; }
+  .detail-tags { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .tag { font-size: 0.78rem; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-strong); color: var(--ink-2); }
+  .chart-link {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700;
+    padding: 9px 16px; border-radius: 999px; background: var(--series-sma50); color: #fff; text-decoration: none;
+  }
+  .chart-link:hover { opacity: 0.9; }
+
+  .summary-text { margin-top: 16px; font-size: 0.94rem; color: var(--ink-2); max-width: 80ch; }
+  .meta-line { margin-top: 10px; font-size: 0.86rem; color: var(--ink-2); }
+  .meta-line a { color: var(--series-sma50); text-decoration: none; }
+  .meta-line a:hover { text-decoration: underline; }
+
+  .stat-groups { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 26px; }
+  @media (max-width: 900px) { .stat-groups { grid-template-columns: 1fr; } }
+  .stat-group h3 { font-size: 0.82rem; color: var(--ink-2); font-weight: 700; letter-spacing: 0.02em; text-transform: uppercase; margin-bottom: 10px; }
+  .stat-list { display: flex; flex-direction: column; gap: 8px; }
+  .stat-item { display: flex; justify-content: space-between; gap: 10px; padding: 9px 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; font-size: 0.9rem; }
+  .stat-item .l { color: var(--ink-2); }
+  .stat-item .v { font-weight: 700; }
+
+  .fin-wrap { margin-top: 26px; }
+  .fin-chart { display: flex; align-items: flex-end; gap: 10px; height: 160px; padding: 10px 0; border-bottom: 1px solid var(--border); }
+  .fin-bar-group { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 4px; height: 100%; }
+  .fin-bars { display: flex; align-items: flex-end; gap: 3px; height: 100%; }
+  .fin-bars .bar { width: 16px; border-radius: 3px 3px 0 0; }
+  .fin-bars .bar.rev { background: var(--series-sma50); }
+  .fin-bars .bar.ni { background: var(--series-sma150); }
+  .fin-year { font-size: 0.76rem; color: var(--ink-2); margin-top: 4px; }
+  .fin-legend { display: flex; gap: 16px; margin-top: 10px; font-size: 0.82rem; color: var(--ink-2); }
+  .fin-legend .item { display: flex; align-items: center; gap: 6px; }
+  .fin-legend .sw { width: 12px; height: 12px; border-radius: 3px; }
+
+  footer { margin-top: 56px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 0.82rem; color: var(--muted); }
+  footer code { font-family: "Cascadia Code", Consolas, monospace; background: color-mix(in srgb, var(--muted) 15%, transparent); padding: 2px 6px; border-radius: 4px; }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="mark serif">COMPANY DESK</span>
+      <span class="tagline">企業情報・投資指標</span>
+    </div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;">
+      <a class="backlink" href="https://yukik206-rgb.github.io/pivot-desk-site/">← PIVOT DESK(チャート)に戻る</a>
+      <a class="backlink" href="https://yukik206-rgb.github.io/pivot-desk-site/market.html">MARKET DESK →</a>
+      <a class="backlink" href="https://yukik206-rgb.github.io/pivot-desk-site/guide.html">投資手法ガイド →</a>
+    </div>
+  </div>
+</div>
+
+<div class="shell">
+  <div class="notice">
+    データはYahoo Finance(無料)。配当利回りなど一部指標は提供元の仕様変更の影響を受けやすく、必ずIR資料等でも確認してください。投資助言ではありません。
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>銘柄を選択</h2>
+      <span class="sub" id="listSub">—</span>
+    </div>
+    <div class="search-row">
+      <input type="text" id="searchBox" placeholder="ティッカー・社名・セクターで検索...">
+    </div>
+    <div class="table-scroll">
+      <table class="scan" id="listTable">
+        <thead>
+          <tr><th>銘柄</th><th>会社名</th><th>セクター</th><th>時価総額</th><th>PER</th><th>ROE</th><th>状態</th></tr>
+        </thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>企業詳細</h2>
+    </div>
+    <div class="detail-card" id="detailCard">
+      <div style="color:var(--muted);">上の表から銘柄を選択してください。</div>
+    </div>
+  </div>
+
+  <footer>
+    データ: Yahoo Finance(無料)。生成日時: <span class="mono" id="footDate">—</span>。
+    投資指標・業績の詳細は<code>投資/チャート分析/README.md</code>参照。
+  </footer>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  const P = __COMPANY_JSON__;
+
+  function fmtMoney(v){
+    if (v == null) return "—";
+    const abs = Math.abs(v);
+    if (abs >= 1e12) return "$" + (v/1e12).toFixed(2) + "T";
+    if (abs >= 1e9) return "$" + (v/1e9).toFixed(2) + "B";
+    if (abs >= 1e6) return "$" + (v/1e6).toFixed(1) + "M";
+    return "$" + v.toFixed(0);
+  }
+  function fmtNum(v, nd){
+    if (v == null) return "—";
+    return Number(v).toFixed(nd==null?2:nd);
+  }
+  // NOTE: yfinance quirk verified directly — dividendYield comes back already
+  // scaled as a percent number (e.g. 2.4 means 2.4%), while roe/roa/margins/
+  // payoutRatio/ownership/growth fields come back as 0-1 fractions needing
+  // x100. Mixing these up would silently show numbers 100x too large/small.
+  function fmtPctFraction(v){ return v == null ? "—" : (Number(v)*100).toFixed(1) + "%"; }
+  function fmtPctAsIs(v){ return v == null ? "—" : Number(v).toFixed(2) + "%"; }
+  function fmtInt(v){ return v == null ? "—" : Math.round(v).toLocaleString(); }
+
+  document.getElementById("footDate").textContent = P.meta.date;
+  document.getElementById("listSub").textContent = `${P.list.length}銘柄(スクリーニング適合+準合格ウォッチリスト)`;
+
+  const listBody = document.getElementById("listBody");
+  function renderList(filter){
+    const q = (filter||"").trim().toLowerCase();
+    const rows = P.list.filter(r => !q ||
+      r.sym.toLowerCase().includes(q) || (r.name||"").toLowerCase().includes(q) || (r.sector||"").toLowerCase().includes(q));
+    listBody.innerHTML = rows.map(r => {
+      const c = P.companies[r.sym];
+      const statePill = r.inMainList
+        ? `<span class="pill pill-good">8/8適合</span>`
+        : `<span class="pill pill-muted">7/8監視</span>`;
+      return `<tr class="row" data-sym="${r.sym}">
+        <td class="sym-cell mono">${r.sym}</td>
+        <td>${c ? c.name : "—"}</td>
+        <td>${c && (c.sectorJa || c.sector) ? (c.sectorJa || c.sector) : "—"}</td>
+        <td class="num">${c ? fmtMoney(c.marketCap) : "—"}</td>
+        <td class="num">${c && c.trailingPE!=null ? fmtNum(c.trailingPE,1) : "—"}</td>
+        <td class="num">${c && c.roe!=null ? fmtPctFraction(c.roe) : "—"}</td>
+        <td>${statePill}</td>
+      </tr>`;
+    }).join("");
+  }
+  renderList("");
+
+  document.getElementById("searchBox").addEventListener("input", (e) => renderList(e.target.value));
+
+  function renderFinancials(annual){
+    if (!annual || !annual.length) return `<div style="color:var(--muted);font-size:0.88rem;">年次財務データを取得できませんでした。</div>`;
+    const vals = annual.flatMap(a => [a.revenue, a.netIncome]).filter(v => v != null);
+    const maxAbs = Math.max(1, ...vals.map(v => Math.abs(v)));
+    const bars = annual.map(a => {
+      const revH = a.revenue == null ? 0 : Math.max(2, Math.abs(a.revenue)/maxAbs*130);
+      const niH = a.netIncome == null ? 0 : Math.max(2, Math.abs(a.netIncome)/maxAbs*130);
+      return `<div class="fin-bar-group">
+        <div class="fin-bars">
+          <div class="bar rev" style="height:${revH}px" title="売上高 ${fmtMoney(a.revenue)}"></div>
+          <div class="bar ni" style="height:${niH}px" title="純利益 ${fmtMoney(a.netIncome)}"></div>
+        </div>
+        <div class="fin-year mono">${a.year}</div>
+      </div>`;
+    }).join("");
+    return `<div class="fin-chart">${bars}</div>
+      <div class="fin-legend">
+        <span class="item"><span class="sw" style="background:var(--series-sma50);"></span>売上高</span>
+        <span class="item"><span class="sw" style="background:var(--series-sma150);"></span>純利益</span>
+      </div>`;
+  }
+
+  function selectCompany(sym){
+    const c = P.companies[sym];
+    const card = document.getElementById("detailCard");
+    if (!c){
+      card.innerHTML = `<div style="color:var(--muted);">この銘柄の企業情報は取得できませんでした。</div>`;
+      return;
+    }
+    document.querySelectorAll("#listBody tr").forEach(tr => tr.classList.toggle("active", tr.dataset.sym===sym));
+
+    const loc = [c.city, c.country].filter(Boolean).join(", ");
+    const q = c.quarterlyGrowth;
+    const qLine = q
+      ? `売上成長(YoY) ${q.revGrowth==null?"—":fmtPctAsIs(q.revGrowth)} ・ EPS成長(YoY) ${q.epsGrowth==null?"—":fmtPctAsIs(q.epsGrowth)} ・ 評価: ${q.grade}`
+      : "四半期成長データなし";
+
+    card.innerHTML = `
+      <div class="detail-top">
+        <div>
+          <span class="detail-name">${c.name}</span><span class="detail-sym mono">${sym}</span>
+          <div class="detail-tags">
+            ${(c.sectorJa || c.sector) ? `<span class="tag">${c.sectorJa || c.sector}</span>` : ""}
+            ${(c.industryJa || c.industry) ? `<span class="tag">${c.industryJa || c.industry}</span>` : ""}
+          </div>
+        </div>
+        <a class="chart-link" href="https://yukik206-rgb.github.io/pivot-desk-site/#${sym}">チャートを見る →</a>
+      </div>
+
+      <div class="summary-text">${c.summaryJa || c.summary || "事業内容の説明データがありません。"}</div>
+      ${(!c.summaryJa && c.summary) ? `<div style="font-size:0.78rem;color:var(--muted);margin-top:4px;">(日本語訳が未生成のため原文を表示しています)</div>` : ""}
+      <div class="meta-line">
+        従業員数: ${fmtInt(c.employees)} ・ 本社: ${loc || "—"}
+        ${c.website ? ` ・ <a href="${c.website}" target="_blank" rel="noopener">${c.website}</a>` : ""}
+      </div>
+      <div class="meta-line">${qLine}</div>
+
+      <div class="stat-groups">
+        <div class="stat-group">
+          <h3>投資指標</h3>
+          <div class="stat-list">
+            <div class="stat-item"><span class="l">時価総額</span><span class="v num">${fmtMoney(c.marketCap)}</span></div>
+            <div class="stat-item"><span class="l">PER(実績)</span><span class="v num">${fmtNum(c.trailingPE,1)}</span></div>
+            <div class="stat-item"><span class="l">PER(予想)</span><span class="v num">${fmtNum(c.forwardPE,1)}</span></div>
+            <div class="stat-item"><span class="l">PBR</span><span class="v num">${fmtNum(c.priceToBook,2)}</span></div>
+            <div class="stat-item"><span class="l">PSR</span><span class="v num">${fmtNum(c.priceToSales,2)}</span></div>
+            <div class="stat-item"><span class="l">EV/EBITDA</span><span class="v num">${fmtNum(c.evToEbitda,1)}</span></div>
+            <div class="stat-item"><span class="l">配当利回り</span><span class="v num">${fmtPctAsIs(c.dividendYield)}</span></div>
+            <div class="stat-item"><span class="l">β(ベータ)</span><span class="v num">${fmtNum(c.beta,2)}</span></div>
+          </div>
+        </div>
+        <div class="stat-group">
+          <h3>収益性・財務健全性</h3>
+          <div class="stat-list">
+            <div class="stat-item"><span class="l">ROE</span><span class="v num">${fmtPctFraction(c.roe)}</span></div>
+            <div class="stat-item"><span class="l">ROA</span><span class="v num">${fmtPctFraction(c.roa)}</span></div>
+            <div class="stat-item"><span class="l">売上高純利益率</span><span class="v num">${fmtPctFraction(c.profitMargin)}</span></div>
+            <div class="stat-item"><span class="l">売上高営業利益率</span><span class="v num">${fmtPctFraction(c.operatingMargin)}</span></div>
+            <div class="stat-item"><span class="l">配当性向</span><span class="v num">${fmtPctFraction(c.payoutRatio)}</span></div>
+            <div class="stat-item"><span class="l">D/E比率</span><span class="v num">${fmtNum(c.debtToEquity,1)}</span></div>
+            <div class="stat-item"><span class="l">流動比率</span><span class="v num">${fmtNum(c.currentRatio,2)}</span></div>
+          </div>
+        </div>
+        <div class="stat-group">
+          <h3>需給・52週レンジ</h3>
+          <div class="stat-list">
+            <div class="stat-item"><span class="l">機関投資家保有比率</span><span class="v num">${fmtPctFraction(c.instOwnPct)}</span></div>
+            <div class="stat-item"><span class="l">インサイダー保有比率</span><span class="v num">${fmtPctFraction(c.insiderOwnPct)}</span></div>
+            <div class="stat-item"><span class="l">52週高値</span><span class="v num">${c.week52High!=null?"$"+c.week52High.toFixed(2):"—"}</span></div>
+            <div class="stat-item"><span class="l">52週安値</span><span class="v num">${c.week52Low!=null?"$"+c.week52Low.toFixed(2):"—"}</span></div>
+            <div class="stat-item"><span class="l">平均出来高</span><span class="v num">${fmtInt(c.avgVolume)}</span></div>
+            <div class="stat-item"><span class="l">発行済株式数</span><span class="v num">${fmtInt(c.sharesOut)}</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="fin-wrap">
+        <h3 style="font-size:0.82rem;color:var(--ink-2);font-weight:700;letter-spacing:0.02em;text-transform:uppercase;margin-bottom:10px;">年次業績推移</h3>
+        ${renderFinancials(c.annual)}
+      </div>
+    `;
+  }
+
+  listBody.addEventListener("click", (e) => {
+    const tr = e.target.closest("tr.row"); if (!tr) return;
+    location.hash = tr.dataset.sym;
+  });
+
+  function applyHash(){
+    const sym = location.hash.replace("#", "").toUpperCase();
+    if (sym && P.companies[sym]) selectCompany(sym);
+  }
+  window.addEventListener("hashchange", applyHash);
+  applyHash();
+  if (!location.hash && P.list.length) { location.hash = P.list[0].sym; }
+})();
+</script>

@@ -1,0 +1,56 @@
+name: Daily PIVOT DESK update
+
+on:
+  schedule:
+    # 22:30 UTC Mon-Fri = 07:30 JST Tue-Sat (Japan has no DST)
+    - cron: "30 22 * * 1-5"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+
+env:
+  TZ: Asia/Tokyo
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install -r pipeline/requirements.txt
+
+      - name: Generate reports and dashboards
+        working-directory: pipeline/src
+        env:
+          PIVOT_DESK_INVEST_DIR: ${{ github.workspace }}/pipeline/invest_docs
+        run: |
+          python generate_report.py --universe sp500
+          python generate_dashboard.py --universe sp500
+          python generate_company_site.py --universe sp500
+          python generate_method_guide.py
+          python generate_market_dashboard.py --universe sp500
+
+      - name: Publish generated pages to site root
+        run: |
+          cp pipeline/output/dashboard_sp500_*.html index.html
+          cp pipeline/output/company_sp500_*.html company.html
+          cp pipeline/output/method_guide.html guide.html
+          cp pipeline/output/market_sp500_*.html market.html
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if [ -n "$(git status --porcelain)" ]; then
+            git commit -m "Daily update $(date +%Y-%m-%d)"
+            git push
+          else
+            echo "no changes to publish"
+          fi

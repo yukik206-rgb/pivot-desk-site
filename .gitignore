@@ -1,0 +1,5 @@
+pipeline/data/cache/
+pipeline/output/
+pipeline/src/__pycache__/
+__pycache__/
+*.pyc

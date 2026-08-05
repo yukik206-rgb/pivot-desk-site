@@ -1,0 +1,160 @@
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>METHOD GUIDE — ミネルヴィニ投資手法・システム設計ガイド</title>
+<style>
+  :root {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --accent: #eb6834; --accent-ink: #ffffff;
+    --series-sma50: #2a78d6;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) {
+      color-scheme: dark;
+      --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+      --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+      --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+      --accent: #d95926; --accent-ink: #ffffff;
+      --series-sma50: #3987e5;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --page: #0d0d0d; --surface: #1a1a19; --surface-2: #202020;
+    --ink: #ffffff; --ink-2: #c3c2b7; --muted: #898781;
+    --grid: #2c2c2a; --border: rgba(255,255,255,0.10); --border-strong: rgba(255,255,255,0.20);
+    --accent: #d95926; --accent-ink: #ffffff; --series-sma50: #3987e5;
+  }
+  :root[data-theme="light"] {
+    color-scheme: light;
+    --page: #f9f9f7; --surface: #fcfcfb; --surface-2: #ffffff;
+    --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
+    --grid: #e1e0d9; --border: rgba(11,11,11,0.10); --border-strong: rgba(11,11,11,0.18);
+    --accent: #eb6834; --accent-ink: #ffffff; --series-sma50: #2a78d6;
+  }
+
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; }
+  body {
+    background: var(--page); color: var(--ink);
+    font-family: "Segoe UI", ui-sans-serif, system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 16px; line-height: 1.7;
+  }
+  .mono { font-family: "Cascadia Code", Consolas, "SF Mono", Menlo, monospace; }
+  .serif { font-family: Cambria, Georgia, "Times New Roman", serif; }
+  a { color: var(--series-sma50); }
+
+  .topbar {
+    position: sticky; top: 0; z-index: 20;
+    background: color-mix(in srgb, var(--surface-2) 92%, transparent);
+    backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .topbar-inner {
+    max-width: 1180px; margin: 0 auto; padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+  }
+  .brand { display: flex; align-items: baseline; gap: 12px; }
+  .brand .mark { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.01em; }
+  .brand .tagline { font-size: 0.8rem; color: var(--ink-2); letter-spacing: 0.03em; text-transform: uppercase; }
+  .toplinks { display: flex; gap: 10px; flex-wrap: wrap; }
+  .toplinks a {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 0.86rem; font-weight: 700;
+    padding: 7px 14px; border-radius: 999px; border: 1px solid var(--border-strong); text-decoration: none; color: var(--ink);
+  }
+  .toplinks a:hover { background: color-mix(in srgb, var(--series-sma50) 8%, transparent); }
+
+  .layout { max-width: 1180px; margin: 0 auto; padding: 28px 20px 80px; display: grid; grid-template-columns: 240px 1fr; gap: 40px; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+  @media (max-width: 600px) {
+    .layout { padding: 20px 12px 60px; gap: 20px; }
+    .topbar-inner { padding: 12px; }
+    .brand .mark { font-size: 1.25rem; }
+    .sidenav { position: static; flex-direction: row; flex-wrap: wrap; }
+  }
+
+  .sidenav { position: sticky; top: 76px; align-self: start; display: flex; flex-direction: column; gap: 4px; }
+  .nav-item {
+    display: block; padding: 10px 14px; border-radius: 8px; font-size: 0.92rem; font-weight: 600;
+    color: var(--ink-2); text-decoration: none; border: 1px solid transparent;
+  }
+  .nav-item:hover { background: var(--surface); border-color: var(--border); color: var(--ink); }
+
+  .content { min-width: 0; }
+  .notice {
+    margin-bottom: 28px; padding: 14px 18px; border-radius: 10px; border: 1px dashed var(--border-strong);
+    background: color-mix(in srgb, var(--muted) 9%, transparent); font-size: 0.88rem; color: var(--ink-2);
+  }
+
+  section.doc {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    padding: 34px 40px; margin-bottom: 36px; scroll-margin-top: 76px;
+  }
+  @media (max-width: 600px) { section.doc { padding: 24px 20px; } }
+
+  .doc h1 { font-family: Cambria, Georgia, serif; font-size: 1.7rem; font-weight: 700; margin: 0 0 20px; text-wrap: balance; }
+  .doc h2 { font-family: Cambria, Georgia, serif; font-size: 1.3rem; font-weight: 700; margin: 34px 0 14px; padding-top: 20px; border-top: 1px solid var(--border); text-wrap: balance; }
+  .doc h2:first-of-type { border-top: none; padding-top: 0; }
+  .doc h3 { font-size: 1.05rem; font-weight: 700; margin: 24px 0 10px; }
+  .doc p { color: var(--ink-2); margin: 0 0 14px; max-width: 76ch; }
+  .doc ul, .doc ol { color: var(--ink-2); margin: 0 0 14px; padding-left: 1.4em; max-width: 76ch; }
+  .doc li { margin-bottom: 6px; }
+  .doc strong { color: var(--ink); }
+  .doc blockquote {
+    margin: 16px 0; padding: 10px 18px; border-left: 3px solid var(--accent);
+    background: color-mix(in srgb, var(--accent) 6%, transparent); color: var(--ink-2); font-size: 0.94rem;
+  }
+  .doc hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+  .doc code {
+    font-family: "Cascadia Code", Consolas, monospace; font-size: 0.88em;
+    background: color-mix(in srgb, var(--muted) 14%, transparent); padding: 2px 6px; border-radius: 4px;
+  }
+  .doc pre {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 14px 16px; overflow-x: auto; margin: 0 0 16px;
+  }
+  .doc pre code { background: none; padding: 0; }
+  .doc .table-wrap { overflow-x: auto; margin: 0 0 20px; }
+  .doc table { border-collapse: collapse; width: 100%; font-size: 0.9rem; }
+  .doc th, .doc td { padding: 9px 14px; border-bottom: 1px solid var(--border); text-align: left; white-space: nowrap; }
+  .doc thead th { font-size: 0.76rem; color: var(--ink-2); text-transform: uppercase; letter-spacing: 0.03em; }
+
+  footer { max-width: 1180px; margin: 0 auto; padding: 20px 20px 60px; font-size: 0.82rem; color: var(--muted); border-top: 1px solid var(--border); }
+</style>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <span class="mark serif">METHOD GUIDE</span>
+      <span class="tagline">ミネルヴィニ投資手法・システム設計</span>
+    </div>
+    <div class="toplinks">
+      <a href="https://yukik206-rgb.github.io/pivot-desk-site/">← PIVOT DESK(チャート)</a>
+      <a href="https://yukik206-rgb.github.io/pivot-desk-site/company.html">COMPANY DESK(企業情報) →</a>
+      <a href="https://yukik206-rgb.github.io/pivot-desk-site/market.html">MARKET DESK(市場心理) →</a>
+    </div>
+  </div>
+</div>
+
+<div class="layout">
+  <nav class="sidenav">
+__NAV_ITEMS__
+  </nav>
+  <div class="content">
+    <div class="notice">
+      このページは <code class="mono">投資\チャート分析</code> ・ <code class="mono">投資\マーケット分析</code> フォルダのMarkdownドキュメントを自動変換したものです。原文を直接編集すれば、次回生成時にここへ反映されます。
+    </div>
+__SECTIONS__
+  </div>
+</div>
+
+<footer>生成日時: __DATE__。投資助言ではありません。</footer>
+
+<script>
+  document.querySelectorAll(".doc table").forEach(t => {
+    const wrap = document.createElement("div");
+    wrap.className = "table-wrap";
+    t.parentNode.insertBefore(wrap, t);
+    wrap.appendChild(t);
+  });
+</script>
