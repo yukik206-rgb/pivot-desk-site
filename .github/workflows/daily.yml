@@ -2,8 +2,11 @@ name: Daily PIVOT DESK update
 
 on:
   schedule:
-    # 22:30 UTC Mon-Fri = 07:30 JST Tue-Sat (Japan has no DST)
-    - cron: "30 22 * * 1-5"
+    # 21:12 UTC Mon-Fri = 06:12 JST Tue-Sat (Japan has no DST). Started
+    # earlier than the 07:00 target, and on an off-the-hour minute, because
+    # GitHub's scheduled triggers are best-effort and queue up worst right
+    # at :00/:30 — a 07:30 run on 2026-08-06 actually fired an hour late.
+    - cron: "12 21 * * 1-5"
   workflow_dispatch: {}
 
 permissions:
