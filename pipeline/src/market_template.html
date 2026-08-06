@@ -251,7 +251,15 @@
     const ctx = canvas.getContext("2d");
     ctx.scale(dpr,dpr);
     const slice = values.filter(v => v != null);
-    if (slice.length < 2) return;
+    if (slice.length < 2) {
+      ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--muted').trim() || "#999";
+      ctx.font = "11px 'Segoe UI', sans-serif";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      const msg = slice.length === 0 ? "データなし" : "データ蓄積中(あと1週分以上で表示)";
+      ctx.fillText(msg, w/2, h/2);
+      return;
+    }
     const min = Math.min(...slice), max = Math.max(...slice);
     const pad = 4;
     ctx.beginPath();
