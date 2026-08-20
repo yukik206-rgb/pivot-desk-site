@@ -98,6 +98,17 @@
     font-size: 0.88rem; color: var(--ink-2);
   }
 
+  .market-group { margin-top: 52px; }
+  .market-group:first-of-type { margin-top: 0; }
+  .market-group-head {
+    display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px;
+    padding-bottom: 12px; border-bottom: 2px solid var(--border-strong);
+  }
+  .market-group-head h1 { font-family: Cambria, Georgia, serif; font-size: 1.55rem; font-weight: 700; }
+  .market-group-head .tag {
+    font-size: 0.76rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em;
+  }
+
   .section { margin-top: 40px; }
   .section-head { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; margin-bottom: 14px; flex-wrap: wrap; }
   .section-head h2 { font-size: 1.35rem; font-weight: 700; }
@@ -178,52 +189,85 @@
     このサイトが毎日/毎週取得した値をその都度ローカルに蓄積して推移を表示しています。運用開始直後は表示できる推移が短い点に注意してください。
   </div>
 
-  <div class="section">
-    <div class="section-head">
-      <h2>① 過熱度</h2>
-      <span class="sub">VIX・VIX期間構造・SKEW(テールリスク)・S&amp;P500の幅(値がさ株頼みになっていないか)・新高値/新安値</span>
+  <div class="market-group">
+    <div class="market-group-head">
+      <h1 class="serif">米国市場</h1>
+      <span class="tag">US Market</span>
     </div>
-    <div class="grid grid-auto" id="overheatCards"></div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>① 過熱度</h2>
+        <span class="sub">VIX・VIX期間構造・SKEW(テールリスク)・S&amp;P500の幅(値がさ株頼みになっていないか)・新高値/新安値</span>
+      </div>
+      <div class="grid grid-auto" id="overheatCards"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>② AAII個人投資家センチメント</h2>
+        <span class="sub" id="aaiiSub">—</span>
+      </div>
+      <div id="aaiiBlock"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>③ 機関投資家の動き(CFTC先物ポジション)</h2>
+        <span class="sub" id="cotSub">—</span>
+      </div>
+      <div id="cotBlock"></div>
+      <div class="section-head" style="margin-top:26px;">
+        <h3 style="font-size:1.05rem;font-weight:700;">Leveraged Funds区分(ヘッジファンド等の投機筋、NAAIMの代替)</h3>
+        <span class="sub" id="cotLevSub">—</span>
+      </div>
+      <div id="cotLevBlock"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>④ 証拠金残高・レバレッジ(FINRA)</h2>
+        <span class="sub" id="usMarginSub">—</span>
+      </div>
+      <div id="usMarginBlock"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head">
+        <h2>⑤ 半導体セクターの急変動検知</h2>
+        <span class="sub">米欧日の主要銘柄バスケットで、直近の騰落率が過去2年の自分自身の分布の中でどれだけ珍しいかを判定。監視対象は<code>shock_detection.py</code>の設定リストを増やすだけで追加可能。</span>
+      </div>
+      <div class="grid grid-auto" id="shockCardsUs"></div>
+    </div>
   </div>
 
-  <div class="section">
-    <div class="section-head">
-      <h2>② 個人投資家センチメント(AAII・日経225信用取引)</h2>
-      <span class="sub" id="aaiiSub">—</span>
+  <div class="market-group">
+    <div class="market-group-head">
+      <h1 class="serif">日本市場</h1>
+      <span class="tag">Japan Market</span>
     </div>
-    <div id="aaiiBlock"></div>
-    <div class="section-head" style="margin-top:26px;">
-      <h3 style="font-size:1.05rem;font-weight:700;">日経225信用取引状況(信用倍率・評価損益率)・次回SQ</h3>
-      <span class="sub" id="nikkeiMarginSub">—</span>
-    </div>
-    <div id="nikkeiMarginBlock"></div>
-  </div>
 
-  <div class="section">
-    <div class="section-head">
-      <h2>③ 機関投資家の動き(CFTC先物ポジション)</h2>
-      <span class="sub" id="cotSub">—</span>
+    <div class="section">
+      <div class="section-head">
+        <h2>⑥ 日経平均の急変動検知</h2>
+        <span class="sub">直近の騰落率が過去2年の自分自身の分布の中でどれだけ珍しいかを判定。</span>
+      </div>
+      <div class="grid grid-auto" id="shockCardsJp"></div>
     </div>
-    <div id="cotBlock"></div>
-    <div class="section-head" style="margin-top:26px;">
-      <h3 style="font-size:1.05rem;font-weight:700;">Leveraged Funds区分(ヘッジファンド等の投機筋、NAAIMの代替)</h3>
-      <span class="sub" id="cotLevSub">—</span>
-    </div>
-    <div id="cotLevBlock"></div>
-  </div>
 
-  <div class="section">
-    <div class="section-head">
-      <h2>④ 個別指数・セクターの急変動検知</h2>
-      <span class="sub">日経平均などの指数・半導体セクターの主要銘柄バスケットで、直近の騰落率が過去2年の自分自身の分布の中でどれだけ珍しいかを判定。監視対象は<code>shock_detection.py</code>の設定リストを増やすだけで追加可能。</span>
+    <div class="section">
+      <div class="section-head">
+        <h2>⑦ 信用取引状況(信用倍率・評価損益率)・次回SQ</h2>
+        <span class="sub" id="nikkeiMarginSub">—</span>
+      </div>
+      <div id="nikkeiMarginBlock"></div>
     </div>
-    <div class="grid grid-auto" id="shockCards"></div>
   </div>
 
   <footer>
     データ: Yahoo Finance(VIX・VIX3M・SKEW・日経平均・半導体関連銘柄)、AAII Investor Sentiment Survey(個人投資家、週次)、
-    nikkei225jp.com(日経225信用取引状況、週次)、
-    CFTC Commitments of Traders(E-mini S&amp;P500先物、Asset Manager/Institutional・Leveraged Funds区分、週次)。すべて無料・登録不要の公開情報。
+    CFTC Commitments of Traders(E-mini S&amp;P500先物、Asset Manager/Institutional・Leveraged Funds区分、週次)、
+    FINRA証拠金統計(thetrading.tools集計、月次)、nikkei225jp.com(日経225信用取引状況、週次)。すべて無料・登録不要の公開情報。
     生成日時: <span class="mono" id="footDate">—</span>。
     詳細は<code>pivot-desk/README.md</code>参照。
   </footer>
@@ -523,8 +567,9 @@
     cotLevBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(CFTCのレポート形式が変わった可能性があります)</div></div>`;
   }
 
-  // ---- ④ 個別指数・セクターの急変動検知 ----
-  const shockWrap = document.getElementById("shockCards");
+  // ---- ⑤/⑥ 個別指数・セクターの急変動検知(米国=半導体セクター / 日本=日経平均) ----
+  const shockCardsUs = document.getElementById("shockCardsUs");
+  const shockCardsJp = document.getElementById("shockCardsJp");
   const shocks = P.shocks || [];
   function fmtSignedPct(v){ return v == null ? "—" : (v>=0?"+":"") + Number(v).toFixed(2) + "%"; }
   function severityTone(sev){
@@ -557,8 +602,69 @@
       ${breadthHtml}
     </div>`;
   }
-  shockWrap.innerHTML = shocks.length
-    ? shocks.map(shockCardHtml).join("")
+  const shocksJp = shocks.filter(s => s.id === "nikkei225");
+  const shocksUs = shocks.filter(s => s.id !== "nikkei225");
+  shockCardsUs.innerHTML = shocksUs.length
+    ? shocksUs.map(shockCardHtml).join("")
     : `<div class="card"><div class="unavailable">データ取得できませんでした</div></div>`;
+  shockCardsJp.innerHTML = shocksJp.length
+    ? shocksJp.map(shockCardHtml).join("")
+    : `<div class="card"><div class="unavailable">データ取得できませんでした</div></div>`;
+
+  // ---- ④ 米国 証拠金残高・レバレッジ(FINRA) ----
+  const usMarginBlock = document.getElementById("usMarginBlock");
+  const umd = P.usMarginDebt;
+  function yoyTone(pctile){
+    if (pctile == null) return "neutral";
+    if (pctile >= 90) return "critical";
+    if (pctile >= 75) return "warning";
+    if (pctile <= 10) return "warning";
+    return "neutral";
+  }
+  function yoyLabel(pctile, yoy){
+    if (pctile == null || yoy == null) return "データ不足";
+    if (pctile >= 90) return "レバレッジ急拡大(過去比で上位域、過熱注意)";
+    if (pctile >= 75) return "拡大ペース速め";
+    if (pctile <= 10) return "急速なデレバレッジ(過去比で下位域)";
+    return "平常範囲";
+  }
+  if (umd) {
+    document.getElementById("usMarginSub").textContent = `集計月: ${umd.date.slice(0,7)}(月次更新、FINRA公式統計・thetrading.tools集計)`;
+    const hist = umd.history || [];
+    const ratioSeries = hist.map(r => r.leverageRatio);
+    const yoySeries = hist.map(r => r.debitYoyPct);
+    const tone = yoyTone(umd.debitYoyPercentile);
+    const pillClass = tone === "critical" ? "pill-overheat" : tone === "warning" ? "pill-caution" : "pill-neutral";
+    usMarginBlock.innerHTML = `<div class="grid grid-3">
+      <div class="card">
+        <h3>レバレッジ比率(証拠金負債 ÷ フリークレジット現金)</h3>
+        <div class="big">${fmtNum(umd.leverageRatio, 2)}倍</div>
+        <div class="sub-line">証拠金負債 $${fmtInt(umd.debitBalances)}M / フリークレジット $${fmtInt(umd.freeCreditCash)}M</div>
+        <div class="sub-line">日本の信用倍率(買い残÷売り残)とは定義が異なる代替指標。倍率が高いほど手元資金に対して借入が積み上がった状態。</div>
+      </div>
+      <div class="card">
+        <h3>証拠金負債 前年比増減率</h3>
+        <div class="big ${umd.debitYoyPct>=0?'pos':'neg'}">${fmtNum(umd.debitYoyPct,1)}%</div>
+        <div style="margin:8px 0;"><span class="pill ${pillClass}"><span class="pill-dot"></span>${yoyLabel(umd.debitYoyPercentile, umd.debitYoyPct)}</span></div>
+        <div class="sub-line">${umd.debitYoyPercentile == null ? "" : `1997年以降の全履歴中 ${fmtNum(umd.debitYoyPercentile,0)}%タイル`}</div>
+        <div class="sub-line" style="margin-top:8px;">急増はレバレッジの積み上がり(過熱)、急減はデレバレッジ(強制ロスカット等)のサインとされる目安、断定はできない。</div>
+      </div>
+      <div class="card">
+        <h3>推移(直近5年・月次)</h3>
+        <div class="sub-line" style="margin-bottom:2px;">レバレッジ比率</div>
+        <div class="spark-wrap"><canvas id="usRatioSpark" width="480" height="52"></canvas></div>
+        <div class="sub-line" style="margin:10px 0 2px;">前年比増減率</div>
+        <div class="spark-wrap"><canvas id="usYoySpark" width="480" height="52"></canvas></div>
+        <div class="sub-line" style="margin-top:8px;">${hist.length}ヶ月分</div>
+      </div>
+    </div>`;
+    requestAnimationFrame(() => {
+      drawSparkline(document.getElementById("usRatioSpark"), ratioSeries, getComputedStyle(document.documentElement).getPropertyValue('--series-sma200').trim() || "#4a3aa7");
+      drawSparkline(document.getElementById("usYoySpark"), yoySeries, getComputedStyle(document.documentElement).getPropertyValue('--critical').trim() || "#d03b3b");
+    });
+  } else {
+    document.getElementById("usMarginSub").textContent = "—";
+    usMarginBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(thetrading.toolsのページ構成が変わった可能性があります)</div></div>`;
+  }
 })();
 </script>

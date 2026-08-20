@@ -54,6 +54,10 @@ def run(universe_name: str = "sp500"):
     aaii = sentiment.aaii_sentiment()
     print(aaii)
 
+    print("\n=== US margin debt (FINRA, レバレッジ比率・前年比) ===")
+    us_margin = sentiment.us_margin_debt()
+    print({k: v for k, v in (us_margin or {}).items() if k != "history"})
+
     print("\n=== Nikkei 225 margin situation (信用倍率・評価損益率) ===")
     nikkei_margin_pnl = sentiment.nikkei_margin_pnl()
     print(nikkei_margin_pnl)
@@ -85,6 +89,7 @@ def run(universe_name: str = "sp500"):
         "skew": skew,
         "breadth": breadth,
         "aaii": aaii,
+        "usMarginDebt": us_margin,
         "nikkeiMarginPnl": nikkei_margin_pnl,
         "sqDates": sq_dates,
         "cot": cot,

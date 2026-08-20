@@ -52,6 +52,7 @@ AAII_HISTORY = DATA_DIR / "aaii_history.csv"
 COT_HISTORY = DATA_DIR / "cot_history.csv"
 COT_LEVERAGED_HISTORY = DATA_DIR / "cot_leveraged_history.csv"
 NIKKEI_MARGIN_PNL_HISTORY = DATA_DIR / "nikkei_margin_pnl_history.csv"
+US_MARGIN_DEBT_HISTORY = DATA_DIR / "us_margin_debt_history.csv"
 
 AAII_URL = "https://www.aaii.com/sentimentsurvey"
 CFTC_URL = "https://www.cftc.gov/dea/futures/financial_lf.htm"
@@ -62,6 +63,12 @@ CFTC_URL = "https://www.cftc.gov/dea/futures/financial_lf.htm"
 # challenge encountered (unlike the FINRA margin debt page we also rejected).
 NIKKEI225JP_DAILY_URL = "https://nikkei225jp.com/_data/_nfsDATA/DAY/dailyweek2.json"
 NIKKEI225JP_REFERER = "https://nikkei225jp.com/data/sinyou.php"
+# FINRA itself blocks plain requests (403, confirmed 2026-08 — same Cloudflare
+# wall as before); thetrading.tools republishes FINRA's official monthly
+# margin-statistics.xlsx as a plain CSV with the full 1997- history in one
+# response (same "aggregator has what the primary source won't hand over
+# directly" situation as nikkei225jp.com).
+US_MARGIN_DEBT_CSV_URL = "https://www.thetrading.tools/data/indicators/margin-debt.csv"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                           "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"}
 
@@ -318,6 +325,70 @@ def nikkei_margin_pnl() -> dict | None:
         return {**weekly_records[-1], "history": hist.tail(52).to_dict("records")}
     except Exception as e:
         print(f"[sentiment] nikkei_margin_pnl failed: {e}")
+        return None
+
+
+def us_margin_debt() -> dict | None:
+    """米国のFINRA証拠金統計(月次、thetrading.tools集計、1997年からの全履歴
+    を一括取得)。日本の信用倍率(買い残÷売り残)・評価損益率(含み損益%)と
+    完全に同じ定義の指標は米国側に存在しない(週次で買い方/売り方を分けた
+    公式統計が無い)ため、代わりに以下2つを「役割が近い代替指標」として使う:
+
+    (1) レバレッジ比率(証拠金負債÷フリークレジット現金) — 信用買いに使われた
+        借入額を、いつでも売買に回せる手元資金で割った比率。日本の信用倍率
+        (買い方の積み上がり具合)と役割は近いが、計算式そのものは別物。
+    (2) 証拠金負債の前年比増減率 — 急増は過熱(レバレッジの積み上がり)、
+        急減はデレバレッジ(強制ロスカット等)のサインとされる、日本の評価
+        損益率の代わりに「勢い」で見る指標。自身の全履歴内でのパーセンタイル
+        も付与し、この増減率自体がどれだけ珍しいかを判定する。
+    """
+    try:
+        resp = requests.get(US_MARGIN_DEBT_CSV_URL, headers=HEADERS, timeout=20)
+        resp.raise_for_status()
+        lines = resp.text.strip().splitlines()
+        header = lines[0].split(",")
+        col = {name: i for i, name in enumerate(header)}
+
+        records = []
+        yoy_values = []
+        for line in lines[1:]:
+            parts = line.split(",")
+            if len(parts) <= col["free_credit_cash"]:
+                continue
+            debit = parts[col["debit_balances"]]
+            free_cash = parts[col["free_credit_cash"]]
+            yoy = parts[col["debit_yoy"]]
+            if not debit or not free_cash:
+                continue
+            debit_f, free_cash_f = float(debit), float(free_cash)
+            yoy_f = float(yoy) if yoy else None
+            if yoy_f is not None:
+                yoy_values.append(yoy_f)
+            records.append({
+                "date": parts[col["date"]],
+                "debitBalances": round(debit_f),
+                "freeCreditCash": round(free_cash_f),
+                "leverageRatio": round(debit_f / free_cash_f, 2) if free_cash_f else None,
+                "debitYoyPct": round(yoy_f, 2) if yoy_f is not None else None,
+            })
+        if not records:
+            return None
+
+        # rank the latest YoY growth rate within the full 1997- history —
+        # low = unusually fast deleveraging, high = unusually fast leverage
+        # buildup (same "rank within own trailing distribution" framing as
+        # shock_detection.py and the VIX/SKEW snapshots above).
+        latest_yoy = records[-1]["debitYoyPct"]
+        yoy_percentile = None
+        if latest_yoy is not None and len(yoy_values) >= 24:
+            yoy_percentile = round(sum(1 for v in yoy_values if v < latest_yoy) / len(yoy_values) * 100, 1)
+        records[-1]["debitYoyPercentile"] = yoy_percentile
+
+        recent = records[-60:]  # 5 years of monthly points
+        hist = _bulk_seed_history(US_MARGIN_DEBT_HISTORY, recent, dedupe_key="date")
+        return {**records[-1], "history": hist.tail(60).to_dict("records")}
+    except Exception as e:
+        print(f"[sentiment] us_margin_debt failed: {e}")
         return None
 
 
