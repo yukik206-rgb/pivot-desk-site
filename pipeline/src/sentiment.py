@@ -9,10 +9,13 @@ fallback philosophy as company_info.py's handling of missing .info data):
   1. 過熱度        — VIX水準+1年percentile、S&P500の幅(%>50MA/%>200MA)、新高値/新安値、
                      VIX期間構造(VIX/VIX3M)、CBOE SKEW指数(テールリスクの織り込み度)
   2. 個人投資家スタンス — AAII Investor Sentiment Survey(強気/中立/弱気%)、
-                        JPX信用倍率(東証+名証、信用買残÷信用売残)
+                        JPX信用倍率(東証+名証、信用買残÷信用売残)、
+                        日経225信用評価損益率(制度信用、含み損益%)・制度信用倍率
   3. 機関投資家動向   — CFTC Commitments of Traders、E-mini S&P500の
                         Asset Manager/Institutional区分、Leveraged Funds区分
                         (ヘッジファンド等の投機筋)の各ネットポジション
+  4. SQカレンダー     — 日経225オプション/先物のSQ(特別清算指数)算出日までの
+                        営業日数(スクレイピング不要、固定ルールから計算)
 
 AAII・CFTCは無料の一括ヒストリカルDLが無いため、日次実行のたびにその日の値を
 ローカルCSV(data/aaii_history.csv, data/cot_history.csv, data/cot_leveraged_history.csv)
@@ -34,6 +37,7 @@ AAII・CFTCは無料の一括ヒストリカルDLが無いため、日次実行�
     値付けから出る客観的指標)を使う。
 """
 import datetime
+import json
 import re
 from pathlib import Path
 
@@ -48,10 +52,18 @@ AAII_HISTORY = DATA_DIR / "aaii_history.csv"
 COT_HISTORY = DATA_DIR / "cot_history.csv"
 COT_LEVERAGED_HISTORY = DATA_DIR / "cot_leveraged_history.csv"
 JPX_MARGIN_CACHE = DATA_DIR / "jpx_margin_cache.xls"
+NIKKEI_MARGIN_PNL_HISTORY = DATA_DIR / "nikkei_margin_pnl_history.csv"
 
 AAII_URL = "https://www.aaii.com/sentimentsurvey"
 CFTC_URL = "https://www.cftc.gov/dea/futures/financial_lf.htm"
 JPX_MARGIN_PAGE = "https://www.jpx.co.jp/markets/statistics-equities/margin/06.html"
+# Loaded via a plain <script src> tag on nikkei225jp.com's 信用評価 page (not an
+# XHR/fetch call behind a JS-rendered chart, unlike the CBOE Put/Call ratio we
+# rejected above) — a big literal `var DAILY = [[...], ...]` assignment,
+# confirmed fetchable with a plain GET + Referer header, no Cloudflare
+# challenge encountered (unlike the FINRA margin debt page we also rejected).
+NIKKEI225JP_DAILY_URL = "https://nikkei225jp.com/_data/_nfsDATA/DAY/dailyweek2.json"
+NIKKEI225JP_REFERER = "https://nikkei225jp.com/data/sinyou.php"
 HEADERS = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                           "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"}
 
@@ -271,6 +283,91 @@ def jpx_margin_ratio() -> dict | None:
     except Exception as e:
         print(f"[sentiment] jpx_margin_ratio failed: {e}")
         return None
+
+
+def nikkei_margin_pnl() -> dict | None:
+    """日経225の信用評価損益率(制度信用、含み損益%)と制度信用倍率
+    (nikkei225jp.com集計、週次更新)。JPX公式の信用倍率(jpx_margin_ratio、
+    東証+名証・一般+制度合算)とは別の切り口: (1)制度信用のみ(6ヶ月の
+    期日があり期日到来で強制的に反対売買されるため、無期限保有できる
+    一般信用より「いずれ手仕舞われる」圧力が強く読み取りやすいとされる)、
+    (2)評価損益率という含み損益そのものの水準を持つ点がJPX公式データには
+    ない情報。含み損が深いほど信用買い方の投げ売り(損切り)圧力が高い
+    とされる相場格言的な目安(このサイト自身が-3/-10/-15/-20%を節目として
+    色分けしている、それに準拠)。"""
+    try:
+        resp = requests.get(NIKKEI225JP_DAILY_URL, headers={**HEADERS, "Referer": NIKKEI225JP_REFERER}, timeout=20)
+        resp.raise_for_status()
+        text = resp.text.strip()
+        if not text.startswith("var DAILY"):
+            return None
+        body = text[text.find("["):]
+        if body.endswith(";"):
+            body = body[:-1]
+        body = body.replace('""', "null")
+        rows = json.loads(body)
+
+        # columns: [tsMs, nikkei225Close, ?, sellGeneral, sellSystem,
+        # buyGeneral, buySystem, evalPnlPct(制度), marginRatioSystem, ...]
+        latest = None
+        for row in reversed(rows):
+            if row[7] is not None and row[8] is not None:
+                latest = row
+                break
+        if latest is None:
+            return None
+
+        jst = datetime.datetime.utcfromtimestamp(latest[0] / 1000) + datetime.timedelta(hours=9)
+        record = {
+            "date": jst.date().isoformat(),
+            "nikkei225Close": round(float(latest[1]), 2) if latest[1] is not None else None,
+            "evalPnlPct": round(float(latest[7]), 2),
+            "marginRatioSystem": round(float(latest[8]), 2),
+        }
+        hist = _append_history(NIKKEI_MARGIN_PNL_HISTORY, record, dedupe_key="date")
+        return {**record, "history": hist.tail(52).to_dict("records")}
+    except Exception as e:
+        print(f"[sentiment] nikkei_margin_pnl failed: {e}")
+        return None
+
+
+def _nth_friday(year: int, month: int, n: int) -> datetime.date:
+    d = datetime.date(year, month, 1)
+    fridays_seen = 0
+    while True:
+        if d.weekday() == 4:  # Monday=0 ... Friday=4
+            fridays_seen += 1
+            if fridays_seen == n:
+                return d
+        d += datetime.timedelta(days=1)
+
+
+def next_sq_dates(today: datetime.date | None = None) -> dict:
+    """日経225オプション(毎月第2金曜)・先物/ミニ先物(3/6/9/12月の第2金曜)
+    のSQ算出日。固定ルールでの計算なので、スクレイピング不要・データ欠損なし。
+    祝日でSQ日が前営業日にずれる年もあるが、日単位のカレンダー機能としては
+    「おおよそ何営業日後か」の目安として十分(厳密な祝日調整は非対応)。"""
+    today = today or datetime.date.today()
+
+    def _search_forward(is_target_month) -> datetime.date:
+        year, month = today.year, today.month
+        for _ in range(15):
+            if is_target_month(month):
+                candidate = _nth_friday(year, month, 2)
+                if candidate >= today:
+                    return candidate
+            month += 1
+            if month > 12:
+                month = 1
+                year += 1
+        raise RuntimeError("could not find next SQ date")
+
+    option_sq = _search_forward(lambda m: True)
+    futures_sq = _search_forward(lambda m: m in (3, 6, 9, 12))
+    return {
+        "optionSq": {"date": option_sq.isoformat(), "daysUntil": (option_sq - today).days},
+        "futuresSq": {"date": futures_sq.isoformat(), "daysUntil": (futures_sq - today).days},
+    }
 
 
 def _parse_number_row(line: str) -> list[int]:

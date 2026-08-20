@@ -58,6 +58,14 @@ def run(universe_name: str = "sp500"):
     jpx_margin = sentiment.jpx_margin_ratio()
     print(jpx_margin)
 
+    print("\n=== Nikkei 225 margin evaluation P&L ratio (信用評価損益率) ===")
+    nikkei_margin_pnl = sentiment.nikkei_margin_pnl()
+    print(nikkei_margin_pnl)
+
+    print("\n=== next SQ dates ===")
+    sq_dates = sentiment.next_sq_dates()
+    print(sq_dates)
+
     print("\n=== CFTC COT (E-mini S&P500, institutional) ===")
     cot = sentiment.cot_institutional()
     print(cot)
@@ -82,6 +90,8 @@ def run(universe_name: str = "sp500"):
         "breadth": breadth,
         "aaii": aaii,
         "jpxMargin": jpx_margin,
+        "nikkeiMarginPnl": nikkei_margin_pnl,
+        "sqDates": sq_dates,
         "cot": cot,
         "cotLeveraged": cot_leveraged,
         "overheatLabel": overheat_label,

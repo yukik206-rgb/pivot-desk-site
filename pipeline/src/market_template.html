@@ -197,6 +197,11 @@
       <span class="sub" id="jpxSub">—</span>
     </div>
     <div id="jpxBlock"></div>
+    <div class="section-head" style="margin-top:26px;">
+      <h3 style="font-size:1.05rem;font-weight:700;">日経225信用評価損益率(制度信用)・次回SQ</h3>
+      <span class="sub" id="nikkeiMarginSub">—</span>
+    </div>
+    <div id="nikkeiMarginBlock"></div>
   </div>
 
   <div class="section">
@@ -409,6 +414,53 @@
   } else {
     document.getElementById("jpxSub").textContent = "—";
     jpxBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(JPXのページ構成が変わった可能性があります)</div></div>`;
+  }
+
+  // ---- ② 日経225信用評価損益率(制度信用) + 次回SQ ----
+  const nikkeiMarginBlock = document.getElementById("nikkeiMarginBlock");
+  const nmp = P.nikkeiMarginPnl;
+  const sq = P.sqDates;
+  function pnlTone(pct){
+    if (pct == null) return "neutral";
+    if (pct <= -15) return "critical";
+    if (pct <= -3) return "warning";
+    return "good";
+  }
+  function pnlLabel(pct){
+    if (pct == null) return "データ不足";
+    if (pct <= -20) return "強い投げ圧力(逆に底値圏の可能性、要複数根拠)";
+    if (pct <= -15) return "損切り圧力上昇";
+    if (pct <= -10) return "含み損拡大";
+    if (pct <= -3) return "やや含み損";
+    return "平常(ほぼ含み損なし)";
+  }
+  if (nmp) {
+    document.getElementById("nikkeiMarginSub").textContent = `集計日: ${nmp.date}(毎週更新、nikkei225jp.com集計・制度信用ベース)`;
+    const hist = nmp.history || [];
+    const pnlSeries = hist.map(r => r.evalPnlPct);
+    const tone = pnlTone(nmp.evalPnlPct);
+    const pillClass = tone === "critical" ? "pill-overheat" : tone === "warning" ? "pill-caution" : "pill-good";
+    const sqHtml = sq ? `<div class="sub-line" style="margin-top:6px;">次回オプションSQ: <span class="mono">${sq.optionSq.date}</span>(あと${sq.optionSq.daysUntil}日) / 次回先物SQ: <span class="mono">${sq.futuresSq.date}</span>(あと${sq.futuresSq.daysUntil}日)</div>` : "";
+    nikkeiMarginBlock.innerHTML = `<div class="grid grid-2">
+      <div class="card">
+        <h3>信用評価損益率(制度信用)</h3>
+        <div class="big ${nmp.evalPnlPct>=0?'pos':'neg'}">${fmtNum(nmp.evalPnlPct,2)}%</div>
+        <div style="margin:8px 0;"><span class="pill ${pillClass}"><span class="pill-dot"></span>${pnlLabel(nmp.evalPnlPct)}</span></div>
+        <div class="sub-line">制度信用倍率(買残÷売残): ${fmtNum(nmp.marginRatioSystem,2)}倍</div>
+        <div class="sub-line">日経225終値(集計日時点): ${fmtInt(nmp.nikkei225Close)}円</div>
+        <div class="sub-line" style="margin-top:8px;">含み損が深いほど信用買い方の損切り(投げ売り)圧力が強いとされる目安(-3/-10/-15/-20%を節目とする相場格言的な区分、断定はできない)。</div>
+        ${sqHtml}
+      </div>
+      <div class="card">
+        <h3>評価損益率の推移(蓄積分)</h3>
+        <div class="spark-wrap"><canvas id="nikkeiMarginSpark" width="480" height="60"></canvas></div>
+        <div class="sub-line">${hist.length}週分(このサイトの運用開始以降に蓄積したデータのみ)</div>
+      </div>
+    </div>`;
+    requestAnimationFrame(() => drawSparkline(document.getElementById("nikkeiMarginSpark"), pnlSeries, getComputedStyle(document.documentElement).getPropertyValue('--critical').trim() || "#d03b3b"));
+  } else {
+    document.getElementById("nikkeiMarginSub").textContent = "—";
+    nikkeiMarginBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(nikkei225jp.comのページ構成が変わった可能性があります)</div></div>`;
   }
 
   // ---- ③ CFTC COT ----
