@@ -188,17 +188,12 @@
 
   <div class="section">
     <div class="section-head">
-      <h2>② 個人投資家センチメント(AAII・JPX信用倍率)</h2>
+      <h2>② 個人投資家センチメント(AAII・日経225信用取引)</h2>
       <span class="sub" id="aaiiSub">—</span>
     </div>
     <div id="aaiiBlock"></div>
     <div class="section-head" style="margin-top:26px;">
-      <h3 style="font-size:1.05rem;font-weight:700;">JPX信用倍率(東証+名証、日本株市場)</h3>
-      <span class="sub" id="jpxSub">—</span>
-    </div>
-    <div id="jpxBlock"></div>
-    <div class="section-head" style="margin-top:26px;">
-      <h3 style="font-size:1.05rem;font-weight:700;">日経225信用評価損益率(制度信用)・次回SQ</h3>
+      <h3 style="font-size:1.05rem;font-weight:700;">日経225信用取引状況(信用倍率・評価損益率)・次回SQ</h3>
       <span class="sub" id="nikkeiMarginSub">—</span>
     </div>
     <div id="nikkeiMarginBlock"></div>
@@ -227,7 +222,7 @@
 
   <footer>
     データ: Yahoo Finance(VIX・VIX3M・SKEW・日経平均・半導体関連銘柄)、AAII Investor Sentiment Survey(個人投資家、週次)、
-    JPX(信用取引現在高、東証+名証、週次)、
+    nikkei225jp.com(日経225信用取引状況、週次)、
     CFTC Commitments of Traders(E-mini S&amp;P500先物、Asset Manager/Institutional・Leveraged Funds区分、週次)。すべて無料・登録不要の公開情報。
     生成日時: <span class="mono" id="footDate">—</span>。
     詳細は<code>pivot-desk/README.md</code>参照。
@@ -390,33 +385,7 @@
     aaiiBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(aaii.comのページ構成が変わった可能性があります)</div></div>`;
   }
 
-  // ---- ② JPX信用倍率(東証+名証) ----
-  const jpxBlock = document.getElementById("jpxBlock");
-  const jpx = P.jpxMargin;
-  if (jpx) {
-    const hist = jpx.history || [];
-    const ratios = hist.map(r => r.ratio);
-    document.getElementById("jpxSub").textContent = `週末時点: ${jpx.date}(JPXの公表スケジュールにより数週間のラグが生じる場合あり)`;
-    jpxBlock.innerHTML = `<div class="grid grid-2">
-      <div class="card">
-        <h3>信用倍率(信用買残 ÷ 信用売残、東証+名証)</h3>
-        <div class="big">${fmtNum(jpx.ratio, 2)}倍</div>
-        <div class="sub-line">信用買残 ${fmtInt(jpx.bought_thousand_shares)}千株 / 信用売残 ${fmtInt(jpx.sold_thousand_shares)}千株</div>
-        <div class="sub-line">倍率が高いほど個人の信用買いが売り建てより積み上がった状態、低下・1倍割れは売り長を示す。市場規模に対する絶対水準の目安は今後の検証課題。</div>
-      </div>
-      <div class="card">
-        <h3>信用倍率の推移(JPX公式、直近52週)</h3>
-        <div class="spark-wrap"><canvas id="jpxSpark" width="480" height="60"></canvas></div>
-        <div class="sub-line">${hist.length}週分。JPXの公開Excelは2002年からの全履歴を含む(このページでは直近52週のみ表示)。</div>
-      </div>
-    </div>`;
-    requestAnimationFrame(() => drawSparkline(document.getElementById("jpxSpark"), ratios, getComputedStyle(document.documentElement).getPropertyValue('--series-sma200').trim() || "#4a3aa7"));
-  } else {
-    document.getElementById("jpxSub").textContent = "—";
-    jpxBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(JPXのページ構成が変わった可能性があります)</div></div>`;
-  }
-
-  // ---- ② 日経225信用評価損益率(制度信用) + 次回SQ ----
+  // ---- ② 日経225信用取引状況(信用倍率・評価損益率) + 次回SQ ----
   const nikkeiMarginBlock = document.getElementById("nikkeiMarginBlock");
   const nmp = P.nikkeiMarginPnl;
   const sq = P.sqDates;
@@ -435,29 +404,42 @@
     return "平常(ほぼ含み損なし)";
   }
   if (nmp) {
-    document.getElementById("nikkeiMarginSub").textContent = `集計日: ${nmp.date}(毎週更新、nikkei225jp.com集計・制度信用ベース)`;
+    document.getElementById("nikkeiMarginSub").textContent = `集計日: ${nmp.date}(週次更新、nikkei225jp.com集計)`;
     const hist = nmp.history || [];
+    const ratioSeries = hist.map(r => r.marginRatioCombined);
     const pnlSeries = hist.map(r => r.evalPnlPct);
     const tone = pnlTone(nmp.evalPnlPct);
     const pillClass = tone === "critical" ? "pill-overheat" : tone === "warning" ? "pill-caution" : "pill-good";
-    const sqHtml = sq ? `<div class="sub-line" style="margin-top:6px;">次回オプションSQ: <span class="mono">${sq.optionSq.date}</span>(あと${sq.optionSq.daysUntil}日) / 次回先物SQ: <span class="mono">${sq.futuresSq.date}</span>(あと${sq.futuresSq.daysUntil}日)</div>` : "";
-    nikkeiMarginBlock.innerHTML = `<div class="grid grid-2">
+    const sqHtml = sq ? `<div class="sub-line" style="margin-top:8px;">次回オプションSQ: <span class="mono">${sq.optionSq.date}</span>(あと${sq.optionSq.daysUntil}日) / 次回先物SQ: <span class="mono">${sq.futuresSq.date}</span>(あと${sq.futuresSq.daysUntil}日)</div>` : "";
+    nikkeiMarginBlock.innerHTML = `<div class="grid grid-3">
+      <div class="card">
+        <h3>信用倍率(一般+制度合算)</h3>
+        <div class="big">${fmtNum(nmp.marginRatioCombined, 2)}倍</div>
+        <div class="sub-line">信用買残 ${fmtInt(nmp.buyThousandShares)}千株 / 信用売残 ${fmtInt(nmp.sellThousandShares)}千株</div>
+        <div class="sub-line">制度信用のみの倍率: ${fmtNum(nmp.marginRatioSystem,2)}倍</div>
+        <div class="sub-line">倍率が高いほど個人の信用買いが売り建てより積み上がった状態。市場規模に対する絶対水準の目安は今後の検証課題。</div>
+      </div>
       <div class="card">
         <h3>信用評価損益率(制度信用)</h3>
         <div class="big ${nmp.evalPnlPct>=0?'pos':'neg'}">${fmtNum(nmp.evalPnlPct,2)}%</div>
         <div style="margin:8px 0;"><span class="pill ${pillClass}"><span class="pill-dot"></span>${pnlLabel(nmp.evalPnlPct)}</span></div>
-        <div class="sub-line">制度信用倍率(買残÷売残): ${fmtNum(nmp.marginRatioSystem,2)}倍</div>
         <div class="sub-line">日経225終値(集計日時点): ${fmtInt(nmp.nikkei225Close)}円</div>
         <div class="sub-line" style="margin-top:8px;">含み損が深いほど信用買い方の損切り(投げ売り)圧力が強いとされる目安(-3/-10/-15/-20%を節目とする相場格言的な区分、断定はできない)。</div>
         ${sqHtml}
       </div>
       <div class="card">
-        <h3>評価損益率の推移(蓄積分)</h3>
-        <div class="spark-wrap"><canvas id="nikkeiMarginSpark" width="480" height="60"></canvas></div>
-        <div class="sub-line">${hist.length}週分(このサイトの運用開始以降に蓄積したデータのみ)</div>
+        <h3>推移(蓄積分)</h3>
+        <div class="sub-line" style="margin-bottom:2px;">信用倍率(合算)</div>
+        <div class="spark-wrap"><canvas id="nikkeiRatioSpark" width="480" height="52"></canvas></div>
+        <div class="sub-line" style="margin:10px 0 2px;">評価損益率</div>
+        <div class="spark-wrap"><canvas id="nikkeiMarginSpark" width="480" height="52"></canvas></div>
+        <div class="sub-line" style="margin-top:8px;">${hist.length}週分(このサイトの運用開始以降に蓄積したデータのみ)</div>
       </div>
     </div>`;
-    requestAnimationFrame(() => drawSparkline(document.getElementById("nikkeiMarginSpark"), pnlSeries, getComputedStyle(document.documentElement).getPropertyValue('--critical').trim() || "#d03b3b"));
+    requestAnimationFrame(() => {
+      drawSparkline(document.getElementById("nikkeiRatioSpark"), ratioSeries, getComputedStyle(document.documentElement).getPropertyValue('--series-sma200').trim() || "#4a3aa7");
+      drawSparkline(document.getElementById("nikkeiMarginSpark"), pnlSeries, getComputedStyle(document.documentElement).getPropertyValue('--critical').trim() || "#d03b3b");
+    });
   } else {
     document.getElementById("nikkeiMarginSub").textContent = "—";
     nikkeiMarginBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(nikkei225jp.comのページ構成が変わった可能性があります)</div></div>`;

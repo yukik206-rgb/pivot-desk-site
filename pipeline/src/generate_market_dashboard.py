@@ -54,11 +54,7 @@ def run(universe_name: str = "sp500"):
     aaii = sentiment.aaii_sentiment()
     print(aaii)
 
-    print("\n=== JPX margin ratio (信用倍率) ===")
-    jpx_margin = sentiment.jpx_margin_ratio()
-    print(jpx_margin)
-
-    print("\n=== Nikkei 225 margin evaluation P&L ratio (信用評価損益率) ===")
+    print("\n=== Nikkei 225 margin situation (信用倍率・評価損益率) ===")
     nikkei_margin_pnl = sentiment.nikkei_margin_pnl()
     print(nikkei_margin_pnl)
 
@@ -89,7 +85,6 @@ def run(universe_name: str = "sp500"):
         "skew": skew,
         "breadth": breadth,
         "aaii": aaii,
-        "jpxMargin": jpx_margin,
         "nikkeiMarginPnl": nikkei_margin_pnl,
         "sqDates": sq_dates,
         "cot": cot,

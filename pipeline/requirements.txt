@@ -4,5 +4,4 @@ numpy
 requests
 pyarrow
 beautifulsoup4
-xlrd
 markdown

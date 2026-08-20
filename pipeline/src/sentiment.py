@@ -9,8 +9,8 @@ fallback philosophy as company_info.py's handling of missing .info data):
   1. 過熱度        — VIX水準+1年percentile、S&P500の幅(%>50MA/%>200MA)、新高値/新安値、
                      VIX期間構造(VIX/VIX3M)、CBOE SKEW指数(テールリスクの織り込み度)
   2. 個人投資家スタンス — AAII Investor Sentiment Survey(強気/中立/弱気%)、
-                        JPX信用倍率(東証+名証、信用買残÷信用売残)、
-                        日経225信用評価損益率(制度信用、含み損益%)・制度信用倍率
+                        日経225信用取引状況(nikkei225jp.com集計、一般+制度
+                        合算信用倍率・制度信用倍率・評価損益率)
   3. 機関投資家動向   — CFTC Commitments of Traders、E-mini S&P500の
                         Asset Manager/Institutional区分、Leveraged Funds区分
                         (ヘッジファンド等の投機筋)の各ネットポジション
@@ -51,12 +51,10 @@ DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 AAII_HISTORY = DATA_DIR / "aaii_history.csv"
 COT_HISTORY = DATA_DIR / "cot_history.csv"
 COT_LEVERAGED_HISTORY = DATA_DIR / "cot_leveraged_history.csv"
-JPX_MARGIN_CACHE = DATA_DIR / "jpx_margin_cache.xls"
 NIKKEI_MARGIN_PNL_HISTORY = DATA_DIR / "nikkei_margin_pnl_history.csv"
 
 AAII_URL = "https://www.aaii.com/sentimentsurvey"
 CFTC_URL = "https://www.cftc.gov/dea/futures/financial_lf.htm"
-JPX_MARGIN_PAGE = "https://www.jpx.co.jp/markets/statistics-equities/margin/06.html"
 # Loaded via a plain <script src> tag on nikkei225jp.com's 信用評価 page (not an
 # XHR/fetch call behind a JS-rendered chart, unlike the CBOE Put/Call ratio we
 # rejected above) — a big literal `var DAILY = [[...], ...]` assignment,
@@ -234,67 +232,28 @@ def aaii_sentiment() -> dict | None:
         return None
 
 
-def jpx_margin_ratio() -> dict | None:
-    """東証+名証の信用取引現在高(週次、JPX公式・無料Excel)から算出する
-    信用倍率(信用買残÷信用売残、共に株数ベース)。JPXのファイルには2002年
-    からの全履歴がそのまま入っているため、AAII/CFTCと違って自前でのローカル
-    蓄積は不要 — 毎回ファイル全体をそのまま使う。ページ上のExcelリンクは
-    JPXが更新するたびにファイル名(ハッシュ)が変わるため、ページを都度
-    スクレイピングして「.xlsで終わる最初のリンク」を取得する
-    (=「信用取引現在高(一般信用取引・制度信用取引別)」、確認済み)。
-    """
-    try:
-        page = requests.get(JPX_MARGIN_PAGE, headers=HEADERS, timeout=20)
-        page.raise_for_status()
-        m = re.search(r'href="([^"]+\.xls)"', page.text)
-        if not m:
-            return None
-        xls_url = "https://www.jpx.co.jp" + m.group(1)
-        xls_resp = requests.get(xls_url, headers=HEADERS, timeout=30)
-        xls_resp.raise_for_status()
-        DATA_DIR.mkdir(parents=True, exist_ok=True)
-        JPX_MARGIN_CACHE.write_bytes(xls_resp.content)
-
-        df = pd.read_excel(JPX_MARGIN_CACHE, engine="xlrd", header=None)
-        # Real data rows carry an actual datetime cell in column 0; header/
-        # footnote rows carry text. Filtering to datetime-typed cells first
-        # (rather than pd.to_datetime(..., errors="coerce") on the raw mixed
-        # column) avoids pandas falling back to slow, warning-prone
-        # per-element string parsing for the whole column.
-        is_date = df[0].apply(lambda v: isinstance(v, (pd.Timestamp, datetime.datetime)))
-        df = df[is_date].copy()
-        df["date"] = pd.to_datetime(df[0]).dt.strftime("%Y-%m-%d")
-        df["sold_short"] = pd.to_numeric(df[1], errors="coerce")
-        df["bought_margin"] = pd.to_numeric(df[3], errors="coerce")
-        df["ratio"] = df["bought_margin"] / df["sold_short"]
-        df = df.dropna(subset=["ratio"])
-        if df.empty:
-            return None
-
-        tail = df.tail(52)
-        latest = tail.iloc[-1]
-        return {
-            "date": latest["date"],
-            "bought_thousand_shares": int(latest["bought_margin"]),
-            "sold_thousand_shares": int(latest["sold_short"]),
-            "ratio": round(float(latest["ratio"]), 2),
-            "history": [{"date": r["date"], "ratio": round(float(r["ratio"]), 2)} for _, r in tail.iterrows()],
-        }
-    except Exception as e:
-        print(f"[sentiment] jpx_margin_ratio failed: {e}")
-        return None
-
-
 def nikkei_margin_pnl() -> dict | None:
-    """日経225の信用評価損益率(制度信用、含み損益%)と制度信用倍率
-    (nikkei225jp.com集計、週次更新)。JPX公式の信用倍率(jpx_margin_ratio、
-    東証+名証・一般+制度合算)とは別の切り口: (1)制度信用のみ(6ヶ月の
-    期日があり期日到来で強制的に反対売買されるため、無期限保有できる
-    一般信用より「いずれ手仕舞われる」圧力が強く読み取りやすいとされる)、
-    (2)評価損益率という含み損益そのものの水準を持つ点がJPX公式データには
-    ない情報。含み損が深いほど信用買い方の投げ売り(損切り)圧力が高い
-    とされる相場格言的な目安(このサイト自身が-3/-10/-15/-20%を節目として
-    色分けしている、それに準拠)。"""
+    """日経225の信用取引状況(一般信用+制度信用の買残・売残、評価損益率、
+    nikkei225jp.com集計、週次更新)。
+
+    元々は東証+名証の信用取引現在高をJPX公式ページから直接スクレイピング
+    していた(jpx_margin_ratio、2026-08時点でこの関数を置き換えて削除)が、
+    JPX公式ページの当該Excelが7/31を最後に3週間以上更新されないまま停滞
+    しているのを確認する一方、このnikkei225jp.comの集計は同時期に8/14まで
+    更新されていた(ユーザー指摘により発覚、確認済み)。JPXが最終的な一次
+    情報源であることに変わりはないはずだが、少なくともこのページの更新
+    頻度は明らかにJPX公式ページより速いため、こちらを信用倍率の一次情報
+    として採用する。
+
+    このソースならではの追加情報:
+    (1) 制度信用のみの数値も取れる — 6ヶ月の期日があり期日到来で強制的に
+        反対売買されるため、無期限保有できる一般信用より「いずれ手仕舞
+        われる」圧力が強く読み取りやすいとされる。
+    (2) 評価損益率(含み損益%)そのものを持つ — JPX公式の残高データだけ
+        では分からない情報。含み損が深いほど信用買い方の投げ売り(損切り)
+        圧力が高いとされる相場格言的な目安(このサイト自身が-3/-10/-15/-20%
+        を節目として色分けしている、それに準拠)。
+    """
     try:
         resp = requests.get(NIKKEI225JP_DAILY_URL, headers={**HEADERS, "Referer": NIKKEI225JP_REFERER}, timeout=20)
         resp.raise_for_status()
@@ -307,22 +266,30 @@ def nikkei_margin_pnl() -> dict | None:
         body = body.replace('""', "null")
         rows = json.loads(body)
 
-        # columns: [tsMs, nikkei225Close, ?, sellGeneral, sellSystem,
-        # buyGeneral, buySystem, evalPnlPct(制度), marginRatioSystem, ...]
+        # columns: [tsMs, nikkei225Close, ?, sellGeneral(一般売残),
+        # sellSystem(制度売残), buyGeneral(一般買残), buySystem(制度買残),
+        # evalPnlPct(制度の評価損益率), marginRatioSystem(制度信用倍率), ...]
         latest = None
         for row in reversed(rows):
-            if row[7] is not None and row[8] is not None:
+            if all(row[i] is not None for i in (3, 4, 5, 6, 7, 8)):
                 latest = row
                 break
         if latest is None:
             return None
 
+        sell_general, sell_system = float(latest[3]), float(latest[4])
+        buy_general, buy_system = float(latest[5]), float(latest[6])
+        sell_total, buy_total = sell_general + sell_system, buy_general + buy_system
+
         jst = datetime.datetime.utcfromtimestamp(latest[0] / 1000) + datetime.timedelta(hours=9)
         record = {
             "date": jst.date().isoformat(),
             "nikkei225Close": round(float(latest[1]), 2) if latest[1] is not None else None,
-            "evalPnlPct": round(float(latest[7]), 2),
+            "buyThousandShares": round(buy_total),
+            "sellThousandShares": round(sell_total),
+            "marginRatioCombined": round(buy_total / sell_total, 2) if sell_total else None,
             "marginRatioSystem": round(float(latest[8]), 2),
+            "evalPnlPct": round(float(latest[7]), 2),
         }
         hist = _append_history(NIKKEI_MARGIN_PNL_HISTORY, record, dedupe_key="date")
         return {**record, "history": hist.tail(52).to_dict("records")}
