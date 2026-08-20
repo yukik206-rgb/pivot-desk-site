@@ -15,6 +15,7 @@ from pathlib import Path
 from data_fetch import fetch_ohlcv
 from universe import get_sp500_tickers
 import sentiment
+import shock_detection
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 TEMPLATE_PATH = Path(__file__).resolve().parent / "market_template.html"
@@ -68,6 +69,11 @@ def run(universe_name: str = "sp500"):
     overheat_label = sentiment.overheat_label(vix, breadth, aaii, vix_term, skew)
     print(f"\noverheat label: {overheat_label}")
 
+    print("\n=== shock detection (watchlist: indices/sector baskets) ===")
+    shocks = shock_detection.run_watchlist()
+    for s in shocks:
+        print(f"  {s['id']}: severity={s['severity']} breadth_pct={s.get('breadthDownPct')}")
+
     payload = {
         "meta": {"date": dt.date.today().isoformat(), "universe": universe_name},
         "vix": vix,
@@ -79,6 +85,7 @@ def run(universe_name: str = "sp500"):
         "cot": cot,
         "cotLeveraged": cot_leveraged,
         "overheatLabel": overheat_label,
+        "shocks": shocks,
     }
 
     template = TEMPLATE_PATH.read_text(encoding="utf-8")

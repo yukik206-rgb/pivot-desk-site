@@ -140,6 +140,7 @@
   .pill-overheat { background: var(--critical-bg); color: var(--critical); }
   .pill-neutral { background: color-mix(in srgb, var(--muted) 20%, transparent); color: var(--ink-2); }
   .pill-caution { background: var(--warning-bg); color: var(--warning); }
+  .pill-good { background: var(--good-bg); color: var(--good); }
 
   .table-scroll { overflow-x: auto; border: 1px solid var(--border); border-radius: 12px; max-height: 340px; overflow-y: auto; }
   table.scan { width: 100%; border-collapse: collapse; min-width: 480px; background: var(--surface); font-size: 0.9rem; }
@@ -211,8 +212,16 @@
     <div id="cotLevBlock"></div>
   </div>
 
+  <div class="section">
+    <div class="section-head">
+      <h2>④ 個別指数・セクターの急変動検知</h2>
+      <span class="sub">日経平均などの指数・半導体セクターの主要銘柄バスケットで、直近の騰落率が過去2年の自分自身の分布の中でどれだけ珍しいかを判定。監視対象は<code>shock_detection.py</code>の設定リストを増やすだけで追加可能。</span>
+    </div>
+    <div class="grid grid-auto" id="shockCards"></div>
+  </div>
+
   <footer>
-    データ: Yahoo Finance(VIX・VIX3M・SKEW)、AAII Investor Sentiment Survey(個人投資家、週次)、
+    データ: Yahoo Finance(VIX・VIX3M・SKEW・日経平均・半導体関連銘柄)、AAII Investor Sentiment Survey(個人投資家、週次)、
     JPX(信用取引現在高、東証+名証、週次)、
     CFTC Commitments of Traders(E-mini S&amp;P500先物、Asset Manager/Institutional・Leveraged Funds区分、週次)。すべて無料・登録不要の公開情報。
     生成日時: <span class="mono" id="footDate">—</span>。
@@ -479,5 +488,43 @@
     document.getElementById("cotLevSub").textContent = "—";
     cotLevBlock.innerHTML = `<div class="card"><div class="unavailable">データ取得できませんでした(CFTCのレポート形式が変わった可能性があります)</div></div>`;
   }
+
+  // ---- ④ 個別指数・セクターの急変動検知 ----
+  const shockWrap = document.getElementById("shockCards");
+  const shocks = P.shocks || [];
+  function fmtSignedPct(v){ return v == null ? "—" : (v>=0?"+":"") + Number(v).toFixed(2) + "%"; }
+  function severityTone(sev){
+    if (sev.startsWith("急落") || sev.includes("同時安")) return "critical";
+    if (sev === "弱含み" || sev.includes("広範な下落")) return "warning";
+    if (sev.startsWith("急騰") || sev === "強含み") return "good";
+    return "neutral";
+  }
+  function shockCardHtml(item){
+    const tone = severityTone(item.severity);
+    const pillClass = tone === "critical" ? "pill-overheat" : tone === "warning" ? "pill-caution" : tone === "good" ? "pill-good" : "pill-neutral";
+    const windowLabel = {"1d":"1営業日","3d":"3営業日","5d":"5営業日"};
+    const rows = ["1d","3d","5d"].map(k => {
+      const w = item.returns[k];
+      const pctileTxt = w.percentile == null ? "データ不足" : `${w.percentile.toFixed(0)}%タイル(過去2年比)`;
+      return `<div class="bar-row"><div class="label"><span>${windowLabel[k]}騰落率</span>
+        <span class="num ${w.pct>=0?'pos':'neg'}">${fmtSignedPct(w.pct)}</span></div>
+        <div class="sub-line" style="margin-top:-2px;">${pctileTxt}</div></div>`;
+    }).join("");
+    const kindNote = item.kind === "index"
+      ? `<div class="sub-line">現在値 ${fmtNum(item.lastClose,0)}</div>`
+      : `<div class="sub-line">構成銘柄${item.nConstituents}銘柄の等金額平均リターン</div>`;
+    const breadthHtml = item.breadthNote
+      ? `<div class="sub-line" style="margin-top:10px;font-weight:700;color:var(--critical);">${item.breadthNote}</div>` : "";
+    return `<div class="card">
+      <h3>${item.label}</h3>
+      <div style="margin:8px 0 12px;"><span class="pill ${pillClass}"><span class="pill-dot"></span>${item.severity}</span></div>
+      ${kindNote}
+      <div style="margin-top:10px;">${rows}</div>
+      ${breadthHtml}
+    </div>`;
+  }
+  shockWrap.innerHTML = shocks.length
+    ? shocks.map(shockCardHtml).join("")
+    : `<div class="card"><div class="unavailable">データ取得できませんでした</div></div>`;
 })();
 </script>
