@@ -81,6 +81,25 @@ def _append_history(path: Path, record: dict, dedupe_key: str) -> pd.DataFrame:
     return hist
 
 
+def _bulk_seed_history(path: Path, records: list[dict], dedupe_key: str) -> pd.DataFrame:
+    """Like _append_history but for a whole batch of records in one
+    read-modify-write pass — used where the source page conveniently hands
+    back its own historical series (unlike AAII/CFTC, which only ever expose
+    "this week's" value and have to be accumulated one point at a time)."""
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    new_df = pd.DataFrame(records)
+    if path.exists():
+        hist = pd.read_csv(path)
+        existing = set(hist[dedupe_key].astype(str)) if dedupe_key in hist.columns else set()
+        new_df = new_df[~new_df[dedupe_key].astype(str).isin(existing)]
+        hist = pd.concat([hist, new_df], ignore_index=True) if not new_df.empty else hist
+    else:
+        hist = new_df
+    hist = hist.sort_values(dedupe_key).reset_index(drop=True)
+    hist.to_csv(path, index=False)
+    return hist
+
+
 def vix_snapshot() -> dict | None:
     """VIX水準 + 直近1年のパーセンタイル順位。低いほど「楽観・過熱注意」。"""
     try:
@@ -253,6 +272,10 @@ def nikkei_margin_pnl() -> dict | None:
         では分からない情報。含み損が深いほど信用買い方の投げ売り(損切り)
         圧力が高いとされる相場格言的な目安(このサイト自身が-3/-10/-15/-20%
         を節目として色分けしている、それに準拠)。
+    (3) AAII/CFTCと違い、この1本のJSONレスポンス自体に何年分もの週次履歴が
+        丸ごと入っている(2009年分まで遡れることを確認済み)ので、AAII/CFTC
+        のように「このサイトの運用開始以降、毎日1点ずつ」何ヶ月もかけて
+        蓄積する必要がない — 直近104週分をその場で一括バックフィルする。
     """
     try:
         resp = requests.get(NIKKEI225JP_DAILY_URL, headers={**HEADERS, "Referer": NIKKEI225JP_REFERER}, timeout=20)
@@ -269,30 +292,30 @@ def nikkei_margin_pnl() -> dict | None:
         # columns: [tsMs, nikkei225Close, ?, sellGeneral(一般売残),
         # sellSystem(制度売残), buyGeneral(一般買残), buySystem(制度買残),
         # evalPnlPct(制度の評価損益率), marginRatioSystem(制度信用倍率), ...]
-        latest = None
-        for row in reversed(rows):
-            if all(row[i] is not None for i in (3, 4, 5, 6, 7, 8)):
-                latest = row
-                break
-        if latest is None:
+        # Most rows are daily Nikkei-close-only (margin columns null); only
+        # the weekly rows where the margin data was published carry all six.
+        weekly_records = []
+        for row in rows:
+            if not all(row[i] is not None for i in (3, 4, 5, 6, 7, 8)):
+                continue
+            sell_total = float(row[3]) + float(row[4])
+            buy_total = float(row[5]) + float(row[6])
+            jst = datetime.datetime.utcfromtimestamp(row[0] / 1000) + datetime.timedelta(hours=9)
+            weekly_records.append({
+                "date": jst.date().isoformat(),
+                "nikkei225Close": round(float(row[1]), 2) if row[1] is not None else None,
+                "buyThousandShares": round(buy_total),
+                "sellThousandShares": round(sell_total),
+                "marginRatioCombined": round(buy_total / sell_total, 2) if sell_total else None,
+                "marginRatioSystem": round(float(row[8]), 2),
+                "evalPnlPct": round(float(row[7]), 2),
+            })
+        if not weekly_records:
             return None
+        weekly_records = weekly_records[-104:]  # ~2 years of weekly points is plenty to keep locally
 
-        sell_general, sell_system = float(latest[3]), float(latest[4])
-        buy_general, buy_system = float(latest[5]), float(latest[6])
-        sell_total, buy_total = sell_general + sell_system, buy_general + buy_system
-
-        jst = datetime.datetime.utcfromtimestamp(latest[0] / 1000) + datetime.timedelta(hours=9)
-        record = {
-            "date": jst.date().isoformat(),
-            "nikkei225Close": round(float(latest[1]), 2) if latest[1] is not None else None,
-            "buyThousandShares": round(buy_total),
-            "sellThousandShares": round(sell_total),
-            "marginRatioCombined": round(buy_total / sell_total, 2) if sell_total else None,
-            "marginRatioSystem": round(float(latest[8]), 2),
-            "evalPnlPct": round(float(latest[7]), 2),
-        }
-        hist = _append_history(NIKKEI_MARGIN_PNL_HISTORY, record, dedupe_key="date")
-        return {**record, "history": hist.tail(52).to_dict("records")}
+        hist = _bulk_seed_history(NIKKEI_MARGIN_PNL_HISTORY, weekly_records, dedupe_key="date")
+        return {**weekly_records[-1], "history": hist.tail(52).to_dict("records")}
     except Exception as e:
         print(f"[sentiment] nikkei_margin_pnl failed: {e}")
         return None

@@ -433,7 +433,7 @@
         <div class="spark-wrap"><canvas id="nikkeiRatioSpark" width="480" height="52"></canvas></div>
         <div class="sub-line" style="margin:10px 0 2px;">評価損益率</div>
         <div class="spark-wrap"><canvas id="nikkeiMarginSpark" width="480" height="52"></canvas></div>
-        <div class="sub-line" style="margin-top:8px;">${hist.length}週分(このサイトの運用開始以降に蓄積したデータのみ)</div>
+        <div class="sub-line" style="margin-top:8px;">${hist.length}週分(nikkei225jp.comの履歴データから一括取得、直近52週分)</div>
       </div>
     </div>`;
     requestAnimationFrame(() => {
