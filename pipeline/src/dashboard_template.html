@@ -349,7 +349,7 @@
     </div>
 
     <details class="watchlist">
-      <summary id="watchlistSummary">② 準合格ウォッチリスト(7/8)</summary>
+      <summary id="watchlistSummary">準合格ウォッチリスト(7/8)</summary>
       <div class="table-scroll">
         <table class="scan">
           <thead><tr><th>銘柄</th><th>株価</th><th>TT</th><th>不足条件</th><th>RS≈</th></tr></thead>
@@ -357,6 +357,21 @@
         </table>
       </div>
     </details>
+  </div>
+
+  <div class="section">
+    <div class="section-head">
+      <h2>② ブレイク接近ウォッチ</h2>
+      <span class="sub" id="pivotWatchSub">—</span>
+    </div>
+    <div class="table-scroll">
+      <table class="scan" id="pivotWatchTable">
+        <thead>
+          <tr><th>銘柄</th><th>TT</th><th>株価</th><th>ピボット</th><th>ピボットまで</th><th>出来高比</th><th>VCPスコア</th><th>RS≈</th></tr>
+        </thead>
+        <tbody id="pivotWatchBody"></tbody>
+      </table>
+    </div>
   </div>
 
   <div class="section">
@@ -629,7 +644,7 @@
     `${P.meta.universe.toUpperCase()} / ${P.tickers.length}銘柄がトレンドテンプレート8/8に適合 / データ日付: ${P.meta.date}`;
   document.getElementById("scanSub").textContent = "トレンドテンプレート8/8 適合銘柄 — VCPスコア降順(行クリックで詳細表示)";
   document.getElementById("watchlistSummary").textContent =
-    `② 準合格ウォッチリスト(7/8) — 監視対象 ${P.watchlist.length}銘柄`;
+    `準合格ウォッチリスト(7/8) — 監視対象 ${P.watchlist.length}銘柄`;
 
   function renderTable(){
     scanBody.innerHTML = P.tickers.map(t => {
@@ -666,6 +681,36 @@
       <td>${w.missing}</td>
       <td class="num">${w.rs}</td>
     </tr>`).join("");
+
+  /* ---- pivot proximity watch ---- */
+  const pivotWatch = P.pivotWatch || [];
+  const pivotWatchBody = document.getElementById("pivotWatchBody");
+  document.getElementById("pivotWatchSub").textContent =
+    `トレンドテンプレート8/8・7/8のうち、ピボット(節目)に近い順 — 本日ブレイクは上位固定(行クリックで詳細表示)`;
+  pivotWatchBody.innerHTML = pivotWatch.length ? pivotWatch.map(p => {
+    const stateCell = p.breakout
+      ? `<span class="pill pill-good">PIVOT BREAK</span>`
+      : `<span class="num neg">${fmtPct(p.distToPivot)}</span>`;
+    return `<tr class="row" data-sym="${p.sym}" tabindex="0">
+      <td class="sym-cell mono">${p.sym}</td>
+      <td><span class="pill ${p.tt===8?'pill-good':'pill-warning'}">${p.tt}/8</span></td>
+      <td class="num">${fmtPrice(p.price)}</td>
+      <td class="num">${fmtPrice(p.pivotPrice)}</td>
+      <td>${stateCell}</td>
+      <td class="num">${Number(p.volRatio).toFixed(2)}x</td>
+      <td class="num">${p.vcp}</td>
+      <td class="num">${p.rs}</td>
+    </tr>`;
+  }).join("") : `<tr><td colspan="8" class="unavailable">対象銘柄がありません</td></tr>`;
+  pivotWatchBody.addEventListener("click", (e) => {
+    const tr = e.target.closest("tr.row"); if (!tr) return;
+    selectTicker(tr.dataset.sym);
+  });
+  pivotWatchBody.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" && e.key !== " ") return;
+    const tr = e.target.closest("tr.row"); if (!tr) return;
+    e.preventDefault(); selectTicker(tr.dataset.sym);
+  });
 
   /* ---- main chart ---- */
   let currentSym = P.tickers[0] ? P.tickers[0].sym : null;
@@ -953,10 +998,20 @@
 
   function selectTicker(sym){
     currentSym = sym;
-    const t = P.tickers.find(x=>x.sym===sym);
+    let t = P.tickers.find(x=>x.sym===sym);
+    if (!t){
+      // 7/8 watchlist symbol surfaced via the pivot-proximity table only —
+      // it has no row in P.tickers (that list is qualifiers-only), so build
+      // an equivalent minimal stand-in from its pivotWatch entry instead.
+      const pw = pivotWatch.find(x=>x.sym===sym);
+      if (pw) t = {
+        sym: pw.sym, price: pw.price, tt: pw.tt, stage: pw.tt===8 ? "Stage 2" : "準合格(7/8)",
+        vcp: pw.vcp, rs: pw.rs, revGrowth: null, epsGrowth: null, fundGrade: "データ不足",
+      };
+    }
     const d = P.series[sym];
     if (!t || !d) return;
-    document.querySelectorAll("#scanBody tr").forEach(tr => tr.classList.toggle("active", tr.dataset.sym===sym));
+    document.querySelectorAll("#scanBody tr, #pivotWatchBody tr").forEach(tr => tr.classList.toggle("active", tr.dataset.sym===sym));
     document.getElementById("detailSymHead").textContent = sym;
     document.getElementById("detailTitle").textContent = sym + "  " + fmtPrice(d.lastClose);
     document.getElementById("detailSub").textContent =

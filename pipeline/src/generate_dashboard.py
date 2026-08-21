@@ -180,6 +180,43 @@ def run(universe_name: str = "sp500", top_similarity_refs: int = 3):
         })
     watchlist_table.sort(key=lambda r: -r["rs"])
 
+    print("\n=== pivot proximity watch (qualifiers + watchlist, by distance to pivot) ===")
+    qualifier_syms = set(qualifiers["symbol"])
+    pivot_watch = []
+    for sym in pool_syms:
+        if sym not in vres_by_sym:
+            continue
+        vres = vres_by_sym[sym]
+        dist = vres["dist_to_pivot_pct"]
+        # Already through the pivot on a *prior* day without today's volume
+        # confirmation isn't "approaching" anymore — it's an extended move
+        # already underway, which is exactly the "chase" the ①→② discussion
+        # this feature came out of was about avoiding. Only keep: still
+        # below pivot (closing in), or breaking out with volume today.
+        if not vres["breakout"] and dist > 0:
+            continue
+        pivot_watch.append({
+            "sym": sym, "price": vres["last_price"], "pivotPrice": vres["pivot_price"],
+            "distToPivot": dist, "volRatio": vres["vol_ratio"] if vres["vol_ratio"] is not None else 0,
+            "breakout": vres["breakout"], "vcp": vres["score"],
+            "rs": round(float(tt_idx.loc[sym, "rs_rating"]), 1),
+            "tt": 8 if sym in qualifier_syms else 7,
+        })
+    # Breakout-today rows first (freshest/least-extended breakout first
+    # within that group); then still-below-pivot rows, closest to the pivot
+    # first within that group.
+    pivot_watch.sort(key=lambda p: (
+        0 if p["breakout"] else 1,
+        p["distToPivot"] if p["breakout"] else -p["distToPivot"],
+    ))
+
+    # Watchlist (7/8) symbols normally never get a full chart series (only
+    # qualifiers do) — but a 7/8 stock closing in on its pivot is exactly
+    # what this list exists to surface, so it needs to be clickable too.
+    for p in pivot_watch:
+        if p["sym"] not in series_payload:
+            series_payload[p["sym"]] = build_full_series(pool_ohlcv[p["sym"]], vres_by_sym[p["sym"]])
+
     print(f"\n=== similarity search (top {top_similarity_refs} VCP-score references) ===")
     ref_syms = sorted(
         (s for s in qualifiers["symbol"] if s in profile_by_sym),
@@ -212,6 +249,7 @@ def run(universe_name: str = "sp500", top_similarity_refs: int = 3):
         "market": market_payload,
         "tickers": tickers_table,
         "watchlist": watchlist_table,
+        "pivotWatch": pivot_watch,
         "series": series_payload,
         "miniSeries": mini_payload,
         "similarity": similarity_payload,
