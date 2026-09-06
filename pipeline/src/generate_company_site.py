@@ -11,6 +11,8 @@ import json
 import math
 from pathlib import Path
 
+import pandas as pd
+
 from company_info import fetch_company_info_bulk
 from fundamentals import fetch_fundamentals_bulk
 from ja_labels import sector_ja, industry_ja
@@ -20,6 +22,8 @@ OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 TEMPLATE_PATH = Path(__file__).resolve().parent / "company_template.html"
 DATA_DIR = Path(__file__).resolve().parent.parent / "data"
 SUMMARY_TRANSLATIONS_PATH = DATA_DIR / "summary_translations_ja.json"
+MAX_DETAIL_POOL = 300  # keep in sync with generate_dashboard.py's cap, so the
+                       # two sites cross-link to the same set of tickers
 
 
 def load_summary_translations() -> dict[str, str]:
@@ -49,6 +53,13 @@ def run(universe_name: str = "sp500"):
     tt_out = screen.run(universe_name)
     qualifiers = tt_out[tt_out["qualifies"]].copy()
     watchlist = tt_out[(tt_out["passed"] == 7) & (~tt_out["qualifies"])].copy()
+
+    if len(qualifiers) + len(watchlist) > MAX_DETAIL_POOL:
+        combined = pd.concat([qualifiers, watchlist]).sort_values("rs_rating", ascending=False)
+        keep_syms = set(combined["symbol"].head(MAX_DETAIL_POOL))
+        qualifiers = qualifiers[qualifiers["symbol"].isin(keep_syms)]
+        watchlist = watchlist[watchlist["symbol"].isin(keep_syms)]
+
     pool = qualifiers["symbol"].tolist() + watchlist["symbol"].tolist()
     in_main = {s: True for s in qualifiers["symbol"]}
 
@@ -101,6 +112,6 @@ def run(universe_name: str = "sp500"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--universe", choices=["sp500"], default="sp500")
+    parser.add_argument("--universe", choices=["sp500", "nyse_nasdaq"], default="nyse_nasdaq")
     args = parser.parse_args()
     run(args.universe)

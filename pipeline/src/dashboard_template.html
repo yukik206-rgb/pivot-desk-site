@@ -542,26 +542,47 @@
   const TF_LABEL = {D: "日足", W: "週足", M: "月足"};
   const TF_VOL_PERIOD = {D: 50, W: 10, M: 3};
 
-  function resample(raw, tf){
-    if (tf === "D") return raw;
+  function bucketSeries(dates, open, high, low, close, vol, tf){
     const buckets = [];
     let cur = null, curKey = null;
-    for (let i = 0; i < raw.dates.length; i++){
-      const key = bucketKey(raw.dates[i], tf);
+    for (let i = 0; i < dates.length; i++){
+      const key = bucketKey(dates[i], tf);
       if (key !== curKey){
-        cur = { date: raw.dates[i], open: raw.open[i], high: raw.high[i], low: raw.low[i], close: raw.close[i], vol: raw.vol[i] || 0 };
+        cur = { date: dates[i], open: open[i], high: high[i], low: low[i], close: close[i], vol: vol[i] || 0 };
         buckets.push(cur);
         curKey = key;
       } else {
-        cur.date = raw.dates[i];
-        if (raw.high[i] != null) cur.high = cur.high == null ? raw.high[i] : Math.max(cur.high, raw.high[i]);
-        if (raw.low[i] != null) cur.low = cur.low == null ? raw.low[i] : Math.min(cur.low, raw.low[i]);
-        if (raw.close[i] != null) cur.close = raw.close[i];
-        cur.vol += raw.vol[i] || 0;
+        cur.date = dates[i];
+        if (high[i] != null) cur.high = cur.high == null ? high[i] : Math.max(cur.high, high[i]);
+        if (low[i] != null) cur.low = cur.low == null ? low[i] : Math.min(cur.low, low[i]);
+        if (close[i] != null) cur.close = close[i];
+        cur.vol += vol[i] || 0;
       }
     }
-    const dates = buckets.map(b=>b.date), open = buckets.map(b=>b.open), high = buckets.map(b=>b.high),
-          low = buckets.map(b=>b.low), close = buckets.map(b=>b.close), vol = buckets.map(b=>b.vol);
+    return {
+      dates: buckets.map(b=>b.date), open: buckets.map(b=>b.open), high: buckets.map(b=>b.high),
+      low: buckets.map(b=>b.low), close: buckets.map(b=>b.close), vol: buckets.map(b=>b.vol),
+    };
+  }
+
+  function resample(raw, tf){
+    if (tf === "D") return raw;
+    // Monthly view: the server ships ~2y of daily bars plus 3 more years
+    // already pre-aggregated into monthly bars (raw.monthlyOlder) — bucket
+    // only the recent daily portion client-side and prepend the rest, so
+    // the chart still spans 5 years without shipping 5 years of daily data.
+    const b = (tf === "M" && raw.monthlyOlder && raw.monthlyOlder.dates.length)
+      ? (() => {
+          const recent = bucketSeries(raw.dates, raw.open, raw.high, raw.low, raw.close, raw.vol, "M");
+          const mo = raw.monthlyOlder;
+          return {
+            dates: mo.dates.concat(recent.dates), open: mo.open.concat(recent.open),
+            high: mo.high.concat(recent.high), low: mo.low.concat(recent.low),
+            close: mo.close.concat(recent.close), vol: mo.vol.concat(recent.vol),
+          };
+        })()
+      : bucketSeries(raw.dates, raw.open, raw.high, raw.low, raw.close, raw.vol, tf);
+    const { dates, open, high, low, close, vol } = b;
     return {
       dates, open, high, low, close, vol,
       sma50: smaSeries(close, 50), sma150: smaSeries(close, 150), sma200: smaSeries(close, 200),

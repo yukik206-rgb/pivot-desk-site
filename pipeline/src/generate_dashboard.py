@@ -22,6 +22,7 @@ import screen
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 TEMPLATE_PATH = Path(__file__).resolve().parent / "dashboard_template.html"
+MAX_DETAIL_POOL = 300
 
 RULE_LABELS = {
     "1_price_above_sma150_200": "条件1: 価格が150日線・200日線の上",
@@ -70,23 +71,58 @@ def missing_rule_label(row) -> str:
     return "—"
 
 
+DAILY_LOOKBACK_BARS = 504  # ~2 trading years
+
+
 def build_full_series(df: pd.DataFrame, vres: dict) -> dict:
-    close, high, low, open_, vol = df["Close"], df["High"], df["Low"], df["Open"], df["Volume"]
-    sma50, sma150, sma200 = close.rolling(50).mean(), close.rolling(150).mean(), close.rolling(200).mean()
+    """df carries 5y of history (so the monthly timeframe can show a real
+    5-year chart), but D/W views and VCP base/contraction detection only
+    ever look back ~1 year (vcp.py's lookback_bars=130 window) — shipping
+    all 5 years at daily granularity to the browser was the single biggest
+    contributor to page size (~90KB/ticker, confirmed live: at nyse_nasdaq
+    scale this pushed one dashboard to 26MB of a 27.5MB payload). Ship only
+    the recent ~2y at daily granularity, and fold anything older into
+    pre-aggregated monthly OHLCV bars (`monthlyOlder`) that the frontend
+    prepends to its own client-side daily→monthly resampling — same 5-year
+    monthly view, a fraction of the bytes.
+    """
+    cutoff = max(0, len(df) - DAILY_LOOKBACK_BARS)
+    older, recent = df.iloc[:cutoff], df.iloc[cutoff:]
+
+    close, high, low, open_, vol = recent["Close"], recent["High"], recent["Low"], recent["Open"], recent["Volume"]
+    full_close = df["Close"]
+    sma50 = full_close.rolling(50).mean().iloc[cutoff:]
+    sma150 = full_close.rolling(150).mean().iloc[cutoff:]
+    sma200 = full_close.rolling(200).mean().iloc[cutoff:]
+
+    monthly_older = None
+    if len(older) > 0:
+        monthly = older.resample("ME").agg(
+            {"Open": "first", "High": "max", "Low": "min", "Close": "last", "Volume": "sum"}
+        ).dropna()
+        if not monthly.empty:
+            monthly_older = {
+                "dates": _dates(monthly.index),
+                "open": _nums(monthly["Open"], 2), "high": _nums(monthly["High"], 2),
+                "low": _nums(monthly["Low"], 2), "close": _nums(monthly["Close"], 2),
+                "vol": [int(v) for v in monthly["Volume"]],
+            }
+
     return {
-        "dates": _dates(df.index),
+        "dates": _dates(recent.index),
         "open": _nums(open_, 2), "high": _nums(high, 2), "low": _nums(low, 2), "close": _nums(close, 2),
         "vol": [int(v) for v in vol],
         "sma50": _nums(sma50), "sma150": _nums(sma150), "sma200": _nums(sma200),
-        "baseStartIdx": vres["base_start_idx"],
-        "contractions": [{"startIdx": c["start_idx"], "endIdx": c["end_idx"], "depth": round(c["depth"])}
-                          for c in vres["contractions"]],
+        "baseStartIdx": max(0, vres["base_start_idx"] - cutoff),
+        "contractions": [{"startIdx": max(0, c["start_idx"] - cutoff), "endIdx": max(0, c["end_idx"] - cutoff),
+                           "depth": round(c["depth"])} for c in vres["contractions"]],
         "pivotPrice": vres["pivot_price"],
         "breakout": vres["breakout"],
         "breakoutIdx": (len(close) - 1) if vres["breakout"] else -1,
         "lastClose": vres["last_price"],
         "distToPivot": vres["dist_to_pivot_pct"],
         "volRatio": vres["vol_ratio"] if vres["vol_ratio"] is not None else 0,
+        "monthlyOlder": monthly_older,
     }
 
 
@@ -122,6 +158,20 @@ def run(universe_name: str = "sp500", top_similarity_refs: int = 3):
     qualifiers = tt_out[tt_out["qualifies"]].copy()
     watchlist = tt_out[(tt_out["passed"] == 7) & (~tt_out["qualifies"])].copy()
     print(f"qualifiers: {len(qualifiers)}, watchlist(7/8): {len(watchlist)}")
+
+    # Full-detail treatment (candlestick series, fundamentals, similarity
+    # search) means a real per-ticker fetch+compute cost, fine at S&P500
+    # scale (~70-150 qualify) but not at nyse_nasdaq scale (700+ qualify —
+    # building that many chart series would also blow up the page's file
+    # size for no benefit on a phone screen). Screening itself still covers
+    # the full universe; this only bounds how many get the deep-dive.
+    if len(qualifiers) + len(watchlist) > MAX_DETAIL_POOL:
+        combined = pd.concat([qualifiers, watchlist]).sort_values("rs_rating", ascending=False)
+        keep_syms = set(combined["symbol"].head(MAX_DETAIL_POOL))
+        qualifiers = qualifiers[qualifiers["symbol"].isin(keep_syms)]
+        watchlist = watchlist[watchlist["symbol"].isin(keep_syms)]
+        print(f"capped detail pool to top {MAX_DETAIL_POOL} by RS rating "
+              f"({len(qualifiers)} qualifiers + {len(watchlist)} watchlist)")
 
     pool_syms = qualifiers["symbol"].tolist() + watchlist["symbol"].tolist()
     print(f"\n=== fetching OHLCV + VCP analysis for pool ({len(pool_syms)} tickers) ===")
@@ -267,6 +317,6 @@ def run(universe_name: str = "sp500", top_similarity_refs: int = 3):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--universe", choices=["sp500"], default="sp500")
+    parser.add_argument("--universe", choices=["sp500", "nyse_nasdaq"], default="nyse_nasdaq")
     args = parser.parse_args()
     run(args.universe)

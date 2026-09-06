@@ -109,6 +109,6 @@ def run(universe_name: str = "sp500"):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--universe", choices=["smoke", "sp500"], default="sp500")
+    parser.add_argument("--universe", choices=["smoke", "sp500", "nyse_nasdaq"], default="nyse_nasdaq")
     args = parser.parse_args()
     run(args.universe)

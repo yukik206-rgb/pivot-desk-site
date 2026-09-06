@@ -15,18 +15,52 @@ from pathlib import Path
 
 import pandas as pd
 
-from universe import get_sp500_tickers, SMOKE_TEST_TICKERS
+from universe import get_sp500_tickers, get_nasdaq_nyse_universe, SMOKE_TEST_TICKERS
 from data_fetch import fetch_ohlcv
 from trend_template import compute_features, rs_raw_score, evaluate_trend_template
 
 OUTPUT_DIR = Path(__file__).resolve().parent.parent / "output"
 
+# Same liquidity gate backtest.py already uses (design doc §2.2) — without it,
+# a broad universe's RS-rating percentile ranking gets dominated by thin,
+# volatile micro-caps/low-price speculative names, crowding out real,
+# tradable quality names further down the list (found live: with nyse_nasdaq
+# and no liquidity gate, 1309 tickers passed 7-8/8 trend template, and a
+# genuine large-cap (FTI, RS 89.5) ranked 382nd by RS — well outside any
+# reasonably-sized "top N" detail cutoff — because dozens of sub-$10
+# speculative names outranked it). Not a Trend Template rule — a pre-filter
+# on which tickers are even eligible to be screened, so it doesn't change
+# the meaning of "8/8" anywhere downstream.
+MIN_PRICE = 5
+MIN_DOLLAR_VOL = 10_000_000
+
+
+def _is_liquid(df: pd.DataFrame) -> bool:
+    if len(df) < 50:
+        return False
+    close, volume = df["Close"], df["Volume"]
+    dollar_vol_50 = (close * volume).iloc[-50:].mean()
+    return float(close.iloc[-1]) >= MIN_PRICE and float(dollar_vol_50) >= MIN_DOLLAR_VOL
+
 
 def run(universe_name: str) -> pd.DataFrame:
+    # generate_report.py, generate_dashboard.py, and generate_company_site.py
+    # each independently call screen.run() for the same (universe, date) —
+    # fine at S&P500 scale (seconds) but at nyse_nasdaq scale this screen
+    # alone takes ~8 minutes, so redoing it 3x in one daily batch is real
+    # wasted time. The result is a pure function of (universe, date), so the
+    # CSV this same function already writes doubles as a same-day cache.
+    cached_path = OUTPUT_DIR / f"screen_{universe_name}_{dt.date.today().isoformat()}.csv"
+    if cached_path.exists():
+        print(f"reusing cached screen result: {cached_path}")
+        return pd.read_csv(cached_path)
+
     if universe_name == "smoke":
         tickers = SMOKE_TEST_TICKERS
     elif universe_name == "sp500":
         tickers = get_sp500_tickers()
+    elif universe_name == "nyse_nasdaq":
+        tickers = get_nasdaq_nyse_universe()
     else:
         raise ValueError(f"unknown universe: {universe_name}")
 
@@ -35,11 +69,17 @@ def run(universe_name: str) -> pd.DataFrame:
     print(f"usable price history: {len(ohlcv)} / {len(tickers)} tickers")
 
     rows = []
+    n_illiquid = 0
     for sym, df in ohlcv.items():
+        if not _is_liquid(df):
+            n_illiquid += 1
+            continue
         feat = compute_features(df["Close"])
         if feat is None:
             continue
         rows.append({"symbol": sym, **feat})
+    print(f"excluded {n_illiquid} tickers below the liquidity gate "
+          f"(price>=${MIN_PRICE}, 50d avg $ volume>=${MIN_DOLLAR_VOL:,.0f})")
 
     if not rows:
         print("no tickers had enough history to evaluate.")
@@ -86,6 +126,6 @@ def run(universe_name: str) -> pd.DataFrame:
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--universe", choices=["smoke", "sp500"], default="smoke")
+    parser.add_argument("--universe", choices=["smoke", "sp500", "nyse_nasdaq"], default="smoke")
     args = parser.parse_args()
     run(args.universe)
