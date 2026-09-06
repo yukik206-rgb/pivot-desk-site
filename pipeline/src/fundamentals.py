@@ -22,9 +22,15 @@ Known limitations:
     |eps_growth_yoy_pct| this large as a "check the actual filing" flag,
     not a genuine acceleration signal.
 """
+import datetime as dt
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import yfinance as yf
+
+CACHE_DIR = Path(__file__).resolve().parent.parent / "data" / "cache"
 
 
 def _yoy_growth(q: pd.DataFrame, row_name: str, cols: list, offset: int) -> float | None:
@@ -86,5 +92,30 @@ def fetch_fundamentals(ticker: str) -> dict | None:
 
 
 def fetch_fundamentals_bulk(tickers: list[str]) -> pd.DataFrame:
-    rows = [fetch_fundamentals(t) for t in tickers]
-    return pd.DataFrame([r for r in rows if r is not None])
+    """Cached per-day (like company_info.py/data_fetch.py's own caches) —
+    generate_report.py, generate_dashboard.py, and generate_company_site.py
+    each call this independently for largely-overlapping ticker pools.
+    Beyond the redundant work, yfinance's quarterly_income_stmt shares the
+    same crumb-authenticated endpoint .info uses, and re-fetching the same
+    tickers 2-3x in one job measurably eats into that endpoint's per-run
+    rate-limit budget (seen live: company_info.py got 0/300 profiles with
+    "Crumb fetch rate-limited (HTTP 429)" once nyse_nasdaq-scale volume
+    across scripts added up)."""
+    CACHE_DIR.mkdir(parents=True, exist_ok=True)
+    today = dt.date.today().isoformat()
+    cache_file = CACHE_DIR / f"fundamentals_{today}.json"
+
+    cached: dict[str, dict] = {}
+    if cache_file.exists():
+        cached = json.loads(cache_file.read_text(encoding="utf-8"))
+
+    out = dict(cached)
+    missing = [t for t in tickers if t not in cached]
+    if missing:
+        for sym in missing:
+            info = fetch_fundamentals(sym)
+            out[sym] = info  # cache the miss too (None), so it isn't retried all day
+        cache_file.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")
+
+    rows = [out[t] for t in tickers if out.get(t) is not None]
+    return pd.DataFrame(rows)
